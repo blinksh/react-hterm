@@ -1,16 +1,8 @@
 // @flow
 
-import React, { Component } from 'react';
 import type { RRowType, RNodeType, RAttributesType } from './model';
-import RRow from './RRow';
-import hterm from '../../libapps/hterm/dist/js/hterm_all.js';
 
-type PropsType = {};
-
-type StateType = {
-  rows: RRowType[],
-  columnCount: number,
-};
+import { hterm, lib } from '../hterm_all.js';
 
 var __nodeKey = 0;
 
@@ -46,11 +38,11 @@ function __defaultAttributes(): RAttributesType {
 }
 
 function __touch(n: RRowType | RNodeType) {
-  n.v = (n.v + 1) % 10000;
+  n.v = (n.v + 1) % 1000000;
 }
 
 function __genNodeKey(): string {
-  return (__nodeKey++ % 1000000).toString();
+  return (__nodeKey++ % 1000000).toString(32);
 }
 
 function __setNodeText(node: RNodeType, text) {
@@ -58,7 +50,7 @@ function __setNodeText(node: RNodeType, text) {
   if (node.attrs.ascii) {
     node.wcwidth = text.length;
   } else {
-    node.wcwidth = hterm.lib.wc.strWidth(text);
+    node.wcwidth = lib.wc.strWidth(text);
   }
   __touch(node);
 }
@@ -77,14 +69,14 @@ function __nodeSubstr(node: RNodeType, start: number, width: number | void) {
   if (node.attrs.ascii) {
     return node.txt.substr(start, width);
   }
-  return hterm.lib.wc.substr(node.txt, start, width);
+  return lib.wc.substr(node.txt, start, width);
 }
 
 function __nodeSubstring(node: RNodeType, start: number, end: number) {
   if (node.attrs.ascii) {
     return node.txt.substring(start, end);
   }
-  return hterm.lib.wc.substring(node.txt, start, end);
+  return lib.wc.substring(node.txt, start, end);
 }
 
 function __rowWidth(row: RRowType): number {
@@ -109,6 +101,32 @@ function __rowText(row: RRowType): string {
   return rowText;
 }
 
+hterm.Terminal.prototype.appendRows_ = function(count) {
+  var cursorRow = this.screen_.rowsArray.length;
+  var offset = this.scrollbackRows_.length + cursorRow;
+  for (var i = 0; i < count; i++) {
+    var row: RRowType = {
+      number: offset + i,
+      lineOverflow: false,
+      v: 0,
+      nodes: [__createRNode('', 0)],
+    };
+    this.screen_.pushRow(row);
+  }
+
+  var extraRows = this.screen_.rowsArray.length - this.screenSize.height;
+  if (extraRows > 0) {
+    var ary = this.screen_.shiftRows(extraRows);
+    Array.prototype.push.apply(this.scrollbackRows_, ary);
+    if (this.scrollPort_.isScrolledEnd) this.scheduleScrollDown_();
+  }
+
+  if (cursorRow >= this.screen_.rowsArray.length)
+    cursorRow = this.screen_.rowsArray.length - 1;
+
+  this.setAbsoluteCursorPosition(cursorRow, 0);
+};
+
 hterm.TextAttributes.prototype.createNode = function(
   text: string,
   wcwidth: number | void,
@@ -118,6 +136,8 @@ hterm.TextAttributes.prototype.createNode = function(
   attrs.foreground = this.foreground;
   attrs.background = this.background;
   attrs.underlineColor = this.underlineColor;
+
+  // TODO: encode to uint
   attrs.bold = this.bold;
   attrs.faint = this.faint;
   attrs.italic = this.italic;
@@ -126,8 +146,10 @@ hterm.TextAttributes.prototype.createNode = function(
   attrs.strikethrough = this.strikethrough;
   attrs.inverse = this.inverse;
   attrs.invisible = this.invisible;
+
   attrs.wcNode = this.wcNode;
   attrs.asciiNode = this.asciiNode;
+
   attrs.uri = this.uri;
   attrs.uriId = this.uriId;
 
@@ -135,7 +157,7 @@ hterm.TextAttributes.prototype.createNode = function(
     if (this.asciiNode) {
       wcwidth = text.length;
     } else {
-      wcwidth = hterm.lib.wc.strWidth(text);
+      wcwidth = lib.wc.strWidth(text);
     }
   }
 
@@ -164,18 +186,20 @@ hterm.TextAttributes.prototype.matchesNode = function(
     !(this.tileData != null || attrs.tileData) &&
     this.uriId === attrs.uriId &&
     this.foreground === attrs.foreground &&
-    this.background == attrs.background &&
-    this.underlineColor == attrs.underlineColor &&
-    (this.enableBold && this.bold) == this.bold &&
-    this.blink == attrs.blink &&
-    this.italic == attrs.italic &&
-    this.underline == attrs.underline &&
-    !!this.strikethrough == !!attrs.strikethrough
+    this.background === attrs.background &&
+    this.underlineColor === attrs.underlineColor &&
+    (this.enableBold && this.bold) === this.bold &&
+    this.blink === attrs.blink &&
+    this.italic === attrs.italic &&
+    this.underline === attrs.underline &&
+    this.strikethrough === attrs.strikethrough
   );
 };
 
-export default class RScreen extends Component<PropsType, StateType> {
-  _textAttributes: hterm.TextAttributes;
+export default class RScreen {
+  rowsArray: RRowType[];
+  _columnCount: number;
+  textAttributes: hterm.TextAttributes;
   _cursorState: hterm.Screen.CursorState;
 
   cursorPosition: hterm.RowCol;
@@ -188,9 +212,8 @@ export default class RScreen extends Component<PropsType, StateType> {
   wordBreakMatchRight: ?RegExp;
   wordBreakMatchMiddle: ?RegExp;
 
-  constructor(props: PropsType) {
-    super();
-
+  constructor(columnCount: number = 80) {
+    this._columnCount = columnCount;
     this._cursorRowIdx = 0;
     this._cursorNodeIdx = 0;
     this._cursorOffset = 0;
@@ -199,33 +222,27 @@ export default class RScreen extends Component<PropsType, StateType> {
     this.wordBreakMatchRight = null;
     this.wordBreakMatchMiddle = null;
 
-    this._textAttributes = new hterm.TextAttributes(window.document);
+    this.textAttributes = new hterm.TextAttributes(window.document);
     this._cursorState = new hterm.Screen.CursorState(this);
+    this.cursorPosition = new hterm.RowCol(0, 0);
 
-    this.state = { rows: [], columnCount: 80 };
-  }
-
-  _renderRow = (r: RRowType) => <RRow key={r.number} row={r} />;
-
-  render() {
-    const rows = this.state.rows.map(this._renderRow);
-    return <x-screen>{rows}</x-screen>;
+    this.rowsArray = [];
   }
 
   getSize(): hterm.Size {
-    return new hterm.Size(this.state.columnCount, this.state.rows.length);
+    return new hterm.Size(this._columnCount, this.rowsArray.length);
   }
 
   getHeight(): number {
-    return this.state.rows.length;
+    return this.rowsArray.length;
   }
 
   getWidth(): number {
-    return this.state.columnCount;
+    return this._columnCount;
   }
 
   setColumnCount(count: number) {
-    this.setState({ columnCount: count });
+    this._columnCount = count;
 
     if (this.cursorPosition.column >= count) {
       this.setCursorPosition(this.cursorPosition.row, count - 1);
@@ -237,15 +254,15 @@ export default class RScreen extends Component<PropsType, StateType> {
   }
 
   shiftRows(count: number) {
-    return this.state.rows.splice(0, count);
+    return this.rowsArray.splice(0, count);
   }
 
   unshiftRow(row: RRowType) {
-    this.state.rows.splice(0, 0, row);
+    this.rowsArray.splice(0, 0, row);
   }
 
   unshiftRows(rows: RRowType[]) {
-    this.state.rows.unshift.apply(this.state.rows, rows);
+    this.rowsArray.unshift.apply(this.rowsArray, rows);
   }
 
   popRow() {
@@ -253,25 +270,25 @@ export default class RScreen extends Component<PropsType, StateType> {
   }
 
   popRows(count: number) {
-    return this.state.rows.splice(this.state.rows.length - count, count);
+    return this.rowsArray.splice(this.rowsArray.length - count, count);
   }
 
   pushRow(row: RRowType) {
-    this.state.rows.push(row);
+    this.rowsArray.push(row);
   }
 
   pushRows(rows: RRowType[]) {
-    this.state.rows.push.apply(this.state.rows, rows);
+    this.rowsArray.push.apply(this.rowsArray, rows);
   }
 
   insertRows(index: number, rows: RRowType[]) {
     for (var i = 0, len = rows.length; i < len; i++) {
-      this.state.rows.splice(index + i, 0, rows[i]);
+      this.rowsArray.splice(index + i, 0, rows[i]);
     }
   }
 
   removeRow(index: number) {
-    return this.state.rows.splice(index, 1)[0];
+    return this.rowsArray.splice(index, 1)[0];
   }
 
   removeRows = function(index: number, count: number) {
@@ -291,52 +308,52 @@ export default class RScreen extends Component<PropsType, StateType> {
     this.cursorPosition.overflow = false;
 
     var text;
-    if (this._textAttributes.isDefault()) {
+    if (this.textAttributes.isDefault()) {
       text = '';
     } else {
-      text = hterm.lib.f.getWhitespace(this.state.columnCount);
+      text = lib.f.getWhitespace(this._columnCount);
     }
 
     // We shouldn't honor inverse colors when clearing an area, to match
     // xterm's back color erase behavior.
-    var inverse = this._textAttributes.inverse;
-    this._textAttributes.inverse = false;
-    this._textAttributes.syncColors();
+    var inverse = this.textAttributes.inverse;
+    this.textAttributes.inverse = false;
+    this.textAttributes.syncColors();
 
-    var node = this._textAttributes.createNode(text, text.length);
-    var row = this.state.rows[this._cursorRowIdx];
+    var node = this.textAttributes.createNode(text, text.length);
+    var row = this.rowsArray[this._cursorRowIdx];
     row.nodes = [node];
     row.lineOverflow = false;
     __touch(row);
     this._cursorNodeIdx = 0;
 
-    this._textAttributes.inverse = inverse;
-    this._textAttributes.syncColors();
+    this.textAttributes.inverse = inverse;
+    this.textAttributes.syncColors();
   }
 
   commitLineOverflow() {
-    var row = this.state.rows[this._cursorRowIdx];
+    var row = this.rowsArray[this._cursorRowIdx];
     row.lineOverflow = true;
     __touch(row);
   }
 
   setCursorPosition(row: number, column: number) {
-    if (!this.state.rows.length) {
+    if (!this.rowsArray.length) {
       console.warn('Attempt to set cursor position on empty screen.');
       return;
     }
 
-    if (row >= this.state.rows.length) {
+    if (row >= this.rowsArray.length) {
       console.error('Row out of bounds: ' + row);
-      row = this.state.rows.length - 1;
+      row = this.rowsArray.length - 1;
     } else if (row < 0) {
       console.error('Row out of bounds: ' + row);
       row = 0;
     }
 
-    if (column >= this.state.columnCount) {
+    if (column >= this._columnCount) {
       console.error('Column out of bounds: ' + column);
-      column = this.state.columnCount - 1;
+      column = this._columnCount - 1;
     } else if (column < 0) {
       console.error('Column out of bounds: ' + column);
       column = 0;
@@ -344,7 +361,7 @@ export default class RScreen extends Component<PropsType, StateType> {
 
     this.cursorPosition.overflow = false;
 
-    var rowNode = this.state.rows[row];
+    var rowNode = this.rowsArray[row];
     var node = rowNode.nodes[0];
     var nodeIdx = 0;
 
@@ -405,8 +422,8 @@ export default class RScreen extends Component<PropsType, StateType> {
     var txt = node.txt;
     node.txt = __nodeSubstr(node, 0, offset);
     node.wcwidth = offset;
-    afterNode.txt = hterm.lib.wc.substr(txt, offset);
-    afterNode.wcwidth = hterm.lib.wc.strWidth(txt);
+    afterNode.txt = lib.wc.substr(txt, offset);
+    afterNode.wcwidth = lib.wc.strWidth(txt);
 
     var nodes = [];
 
@@ -422,16 +439,13 @@ export default class RScreen extends Component<PropsType, StateType> {
   }
 
   maybeClipCurrentRow() {
-    var cursorRow = this.state.rows[this._cursorRowIdx];
+    var cursorRow = this.rowsArray[this._cursorRowIdx];
     var width = __rowWidth(cursorRow);
 
-    if (width <= this.state.columnCount) {
+    if (width <= this._columnCount) {
       // Current row does not need clipping, but may need clamping.
-      if (this.cursorPosition.column >= this.state.columnCount) {
-        this.setCursorPosition(
-          this.cursorPosition.row,
-          this.state.columnCount - 1,
-        );
+      if (this.cursorPosition.column >= this._columnCount) {
+        this.setCursorPosition(this.cursorPosition.row, this._columnCount - 1);
         this.cursorPosition.overflow = true;
       }
 
@@ -442,10 +456,10 @@ export default class RScreen extends Component<PropsType, StateType> {
     var currentColumn = this.cursorPosition.column;
 
     // Move the cursor to the final column.
-    this.setCursorPosition(this.cursorPosition.row, this.state.columnCount - 1);
+    this.setCursorPosition(this.cursorPosition.row, this._columnCount - 1);
 
     // Remove any text that partially overflows.
-    var cursorNode = this.state.rows[this._cursorRowIdx].nodes[
+    var cursorNode = this.rowsArray[this._cursorRowIdx].nodes[
       this._cursorNodeIdx
     ];
     width = cursorNode.wcwidth;
@@ -460,7 +474,7 @@ export default class RScreen extends Component<PropsType, StateType> {
     // Remove all nodes after the cursor.
     cursorRow.nodes.splice(this._cursorNodeIdx + 1);
 
-    if (currentColumn < this.state.columnCount) {
+    if (currentColumn < this._columnCount) {
       // If the cursor was within the screen before we started then restore its
       // position.
       this.setCursorPosition(this.cursorPosition.row, currentColumn);
@@ -471,8 +485,8 @@ export default class RScreen extends Component<PropsType, StateType> {
   }
 
   insertString(str: string, wcwidth: number) {
-    var cursorRow = this.state.rows[this._cursorRowIdx];
-    var cursorNode = cursorRow[this._cursorNodeIdx];
+    var cursorRow = this.rowsArray[this._cursorRowIdx];
+    var cursorNode = cursorRow.nodes[this._cursorNodeIdx];
 
     var cursorNodeText = cursorNode.txt;
 
@@ -493,19 +507,19 @@ export default class RScreen extends Component<PropsType, StateType> {
       // A negative reverse offset means the cursor is positioned past the end
       // of the characters on this line.  We'll need to insert the missing
       // whitespace.
-      var ws = hterm.lib.f.getWhitespace(-reverseOffset);
+      var ws = lib.f.getWhitespace(-reverseOffset);
 
       // This whitespace should be completely unstyled.  Underline, background
       // color, and strikethrough would be visible on whitespace, so we can't use
       // one of those spans to hold the text.
       if (
         !(
-          this._textAttributes.underline ||
-          this._textAttributes.strikethrough ||
-          this._textAttributes.background ||
-          this._textAttributes.wcNode ||
-          !this._textAttributes.asciiNode ||
-          this._textAttributes.tileData != null
+          this.textAttributes.underline ||
+          this.textAttributes.strikethrough ||
+          this.textAttributes.background ||
+          this.textAttributes.wcNode ||
+          !this.textAttributes.asciiNode ||
+          this.textAttributes.tileData != null
         )
       ) {
         // Best case scenario, we can just pretend the spaces were part of the
@@ -536,7 +550,7 @@ export default class RScreen extends Component<PropsType, StateType> {
       reverseOffset = 0;
     }
 
-    if (this._textAttributes.matchesNode(cursorNode)) {
+    if (this.textAttributes.matchesNode(cursorNode)) {
       // The new text can be placed directly in the cursor node.
       if (reverseOffset == 0) {
         __setNodeText(cursorNode, cursorNodeText + str);
@@ -562,17 +576,14 @@ export default class RScreen extends Component<PropsType, StateType> {
     if (offset == 0) {
       // At the beginning of the cursor node, the check the previous sibling.
       var previousSibling = cursorRow.nodes[this._cursorNodeIdx - 1];
-      if (
-        previousSibling &&
-        this._textAttributes.matchesNode(previousSibling)
-      ) {
+      if (previousSibling && this.textAttributes.matchesNode(previousSibling)) {
         __setNodeText(previousSibling, previousSibling.txt + str);
         this._cursorNodeIdx = this._cursorNodeIdx - 1;
         this._cursorOffset = previousSibling.wcwidth;
         return;
       }
 
-      var newNode = this._textAttributes.createNode(str, wcwidth);
+      var newNode = this.textAttributes.createNode(str, wcwidth);
       cursorRow.nodes.splice(this._cursorNodeIdx, 0, newNode);
       this._cursorOffset = wcwidth;
       return;
@@ -581,14 +592,14 @@ export default class RScreen extends Component<PropsType, StateType> {
     if (reverseOffset == 0) {
       // At the end of the cursor node, the check the next sibling.
       var nextSibling = cursorRow.nodes[this._cursorNodeIdx + 1];
-      if (nextSibling && this._textAttributes.matchesNode(nextSibling)) {
+      if (nextSibling && this.textAttributes.matchesNode(nextSibling)) {
         __setNodeText(nextSibling, str + nextSibling.txt);
         this._cursorNodeIdx++;
-        this._cursorOffset = hterm.lib.wc.strWidth(str);
+        this._cursorOffset = lib.wc.strWidth(str);
         return;
       }
 
-      var newNode = this._textAttributes.createNode(str);
+      var newNode = this.textAttributes.createNode(str);
       cursorRow.nodes.splice(this._cursorNodeIdx + 1, 0, newNode);
       this._cursorNodeIdx++;
       // We specifically need to include any missing whitespace here, since it's
@@ -600,21 +611,21 @@ export default class RScreen extends Component<PropsType, StateType> {
     // Worst case, we're somewhere in the middle of the cursor node.  We'll
     // have to split it into two nodes and insert our new container in between.
     var nodes = this._splitNode(cursorNode, offset);
-    var newNode = this._textAttributes.createContainer(str);
+    var newNode = this.textAttributes.createContainer(str);
     this._cursorNodeIdx++;
     cursorRow.nodes.splice(this._cursorNodeIdx, 0, nodes[1], newNode);
     this._cursorOffset = wcwidth;
   }
 
   overwriteString(str: string, wcwidth: number) {
-    var maxLength = this.state.columnCount - this.cursorPosition.column;
+    var maxLength = this._columnCount - this.cursorPosition.column;
     if (!maxLength) return [str];
 
-    var cursorRowNode = this.state.rows[this._cursorRowIdx];
+    var cursorRowNode = this.rowsArray[this._cursorRowIdx];
     var cursorNode = cursorRowNode.nodes[this._cursorNodeIdx];
 
     if (
-      this._textAttributes.matchesNode(cursorNode) &&
+      this.textAttributes.matchesNode(cursorNode) &&
       cursorNode.txt.substr(this._cursorOffset) == str
     ) {
       // This overwrite would be a no-op, just move the cursor and return.
@@ -629,14 +640,14 @@ export default class RScreen extends Component<PropsType, StateType> {
   }
 
   deleteChars(count: number) {
-    var cursorRowNode = this.state.rows[this._cursorRowIdx];
+    var cursorRowNode = this.rowsArray[this._cursorRowIdx];
 
     var nodeIdx = this._cursorNodeIdx;
     var node = cursorRowNode.nodes[nodeIdx];
     var offset = this._cursorOffset;
 
     var currentCursorColumn = this.cursorPosition.column;
-    count = Math.min(count, this.state.columnCount - currentCursorColumn);
+    count = Math.min(count, this._columnCount - currentCursorColumn);
     if (!count) return 0;
 
     var rv = count;
@@ -669,7 +680,7 @@ export default class RScreen extends Component<PropsType, StateType> {
         // No characters were deleted when there should be.  We're probably trying
         // to delete one column width from a wide character node.  We remove the
         // wide character node here and replace it with a single space.
-        var spaceNode = this._textAttributes.createNode(' ', 1);
+        var spaceNode = this.textAttributes.createNode(' ', 1);
         cursorRowNode.nodes.splice(
           offset ? nodeIdx + 1 : nodeIdx,
           0,
@@ -701,16 +712,16 @@ export default class RScreen extends Component<PropsType, StateType> {
     return rv;
   }
   _getLineStartRow(row: RRowType): RRowType {
-    var rowIdx = this.state.rows.indexOf(row);
+    var rowIdx = this.rowsArray.indexOf(row);
     if (rowIdx <= 0) {
       return row;
     }
 
     while (
-      this.state.rows[rowIdx - 1] &&
-      this.state.rows[rowIdx - 1].lineOverflow
+      this.rowsArray[rowIdx - 1] &&
+      this.rowsArray[rowIdx - 1].lineOverflow
     ) {
-      row = this.state.rows[rowIdx - 1];
+      row = this.rowsArray[rowIdx - 1];
       rowIdx--;
     }
     return row;
@@ -718,14 +729,14 @@ export default class RScreen extends Component<PropsType, StateType> {
 
   _getLineText(row: RRowType): string {
     var rowText = '';
-    var rowIdx = this.state.rows.indexOf(row);
+    var rowIdx = this.rowsArray.indexOf(row);
     if (rowIdx < 0) {
       return __rowText(row);
     }
     while (row) {
       rowText += __rowText(row);
       if (row.lineOverflow) {
-        row = this.state.rows[rowIdx];
+        row = this.rowsArray[rowIdx];
         rowIdx++;
       } else {
         break;
@@ -758,10 +769,14 @@ export default class RScreen extends Component<PropsType, StateType> {
   expandSelection(selection: any) {}
 
   saveCursorAndState(vt: any) {
-    this._cursorState.save(vt);
+    //    this._cursorState.save(vt);
   }
 
   restoreCursorAndState(vt: any) {
-    this._cursorState.restore(vt);
+    //this._cursorState.restore(vt);
   }
 }
+
+RScreen.CursorState = hterm.Screen.CursorState;
+
+hterm.Screen = RScreen;
