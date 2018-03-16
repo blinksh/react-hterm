@@ -11,11 +11,25 @@ type StateType = {
 };
 
 class RowsRenderer extends Component<*, StateType> {
+  _rowRefs = {};
+
   constructor() {
     super();
     this.state = { rows: [] };
   }
-  _renderRow = (r: RRowType) => <RRow key={r.number} row={r} />;
+
+  _renderRow = (row: RRowType) => {
+    // TODO: find a better way
+    var captureRef = ref => {
+      if (ref) {
+        this._rowRefs[row.number] = ref;
+      } else {
+        delete this._rowRefs[row.number];
+      }
+    };
+    return <RRow ref={captureRef} key={row.number} row={row} />;
+  };
+
   render() {
     return this.state.rows.map(this._renderRow);
   }
@@ -23,14 +37,18 @@ class RowsRenderer extends Component<*, StateType> {
   setRows(rows: RRowType[]) {
     this.setState({ rows });
   }
+
+  touchRow(row: RRowType) {
+    var rowRef = this._rowRefs[row.number];
+    if (rowRef) {
+      rowRef.touch();
+    }
+  }
 }
-// Detect request animation frame
-var lastPosition = -1,
-  __screenSize = { height: window.innerHeight, width: window.innerWidth };
+var __screenSize = { height: window.innerHeight, width: window.innerWidth };
 
 // Pre calculate sizes to get better perfs
 function sizes() {
-  lastPosition = -1; // Force a recalculation
   __screenSize = { height: window.innerHeight, width: window.innerWidth };
 }
 window.onresize = sizes;
@@ -338,7 +356,6 @@ hterm.RScrollPort.prototype.decorate = function() {
   // Some of these attributes are standard while others are browser specific,
   // but should be safely ignored by other browsers.
   this.screen_ = window.document.body; // doc.createElement('x-screen');
-  //this.screen_.setAttribute('contenteditable', 'true');
   this.screen_.setAttribute('tabindex', '-1');
   this.screen_.style.cssText =
     'caret-color: transparent;' +
@@ -405,7 +422,7 @@ hterm.RScrollPort.prototype.decorate = function() {
   this._renderDom = doc.createElement('div');
   this.rowNodes_.appendChild(this._renderDom);
 
-  this._renderRef = ReactDOM.render(<RowsRenderer />, this._renderDom);
+  this.renderRef = ReactDOM.render(<RowsRenderer />, this._renderDom);
 
   this.bottomFold_ = this.topFold_.cloneNode();
   this.bottomFold_.id = 'hterm:bottom-fold-for-row-selection';
@@ -791,8 +808,14 @@ hterm.RScrollPort.prototype.syncRowNodesDimensions_ = function() {
   //this.rowNodes_.style.top = this.screen_.offsetTop - topFoldOffset + 'px';
   if (window.pageYOffset <= 0) {
     this.rowNodes_.style.position = 'absolute';
+    if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
+      this.rowProvider_.cursorNode_.style.position = 'absolute';
+    }
   } else {
     this.rowNodes_.style.position = 'fixed';
+    if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
+      this.rowProvider_.cursorNode_.style.position = 'fixed';
+    }
   }
 };
 
@@ -1002,7 +1025,7 @@ hterm.RScrollPort.prototype.drawVisibleRows_ = function(
     }
   }
 
-  this._renderRef.setRows(rows);
+  this.renderRef.setRows(rows);
 };
 
 /**

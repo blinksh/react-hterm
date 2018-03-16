@@ -127,6 +127,71 @@ hterm.Terminal.prototype.appendRows_ = function(count) {
   this.setAbsoluteCursorPosition(cursorRow, 0);
 };
 
+hterm.Terminal.prototype.print = function(str) {
+  var startOffset = 0;
+
+  var strWidth = lib.wc.strWidth(str);
+  // Fun edge case: If the string only contains zero width codepoints (like
+  // combining characters), we make sure to iterate at least once below.
+  if (strWidth == 0 && str) strWidth = 1;
+
+  while (startOffset < strWidth) {
+    if (this.options_.wraparound && this.screen_.cursorPosition.overflow) {
+      this.screen_.commitLineOverflow();
+      this.newLine();
+    }
+
+    var count = strWidth - startOffset;
+    var didOverflow = false;
+    var substr;
+
+    if (this.screen_.cursorPosition.column + count >= this.screenSize.width) {
+      didOverflow = true;
+      count = this.screenSize.width - this.screen_.cursorPosition.column;
+    }
+
+    if (didOverflow && !this.options_.wraparound) {
+      // If the string overflowed the line but wraparound is off, then the
+      // last printed character should be the last of the string.
+      // TODO: This will add to our problems with multibyte UTF-16 characters.
+      substr =
+        lib.wc.substr(str, startOffset, count - 1) +
+        lib.wc.substr(str, strWidth - 1);
+      count = strWidth;
+    } else {
+      substr = lib.wc.substr(str, startOffset, count);
+    }
+
+    var tokens = hterm.TextAttributes.splitWidecharString(substr);
+    for (var i = 0; i < tokens.length; i++) {
+      this.screen_.textAttributes.wcNode = tokens[i].wcNode;
+      this.screen_.textAttributes.asciiNode = tokens[i].asciiNode;
+
+      if (this.options_.insertMode) {
+        this.screen_.insertString(tokens[i].str, tokens[i].wcStrWidth);
+      } else {
+        this.screen_.overwriteString(tokens[i].str, tokens[i].wcStrWidth);
+      }
+      this.screen_.textAttributes.wcNode = false;
+      this.screen_.textAttributes.asciiNode = true;
+    }
+
+    // Touch cursor row;
+    var cursorRow = this.screen_.cursorRow();
+    if (cursorRow) {
+      this.scrollPort_.renderRef.touchRow(cursorRow);
+    }
+
+    this.screen_.maybeClipCurrentRow();
+    startOffset += count;
+  }
+
+  this.scheduleSyncCursorPosition_();
+
+  if (this.scrollOnOutput_)
+    this.scrollPort_.scrollRowToBottom(this.getRowCount());
+};
+
 hterm.TextAttributes.prototype.createNode = function(
   text: string,
   wcwidth: number | void,
@@ -373,7 +438,7 @@ export default class RScreen {
 
     var currentColumn = 0;
 
-    if (row == this._cursorRowIdx) {
+    if (row === this._cursorRowIdx) {
       if (column >= this.cursorPosition.column - this._cursorOffset) {
         nodeIdx = this._cursorNodeIdx;
         currentColumn = this.cursorPosition.column - this._cursorOffset;
@@ -438,8 +503,12 @@ export default class RScreen {
     return nodes;
   }
 
+  cursorRow(): RRowType {
+    return this.rowsArray[this._cursorRowIdx];
+  }
+
   maybeClipCurrentRow() {
-    var cursorRow = this.rowsArray[this._cursorRowIdx];
+    var cursorRow = this.cursorRow();
     var width = __rowWidth(cursorRow);
 
     if (width <= this._columnCount) {

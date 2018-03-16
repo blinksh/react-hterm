@@ -8,11 +8,13 @@ type PropsType = {
 };
 
 export default class RNode extends Component<PropsType> {
+  _v: number;
   render() {
+    this._v = this.props.node.v;
     return this.props.node.txt;
   }
 
   shouldComponentUpdate(nextProps: PropsType) {
-    return this.props.node.v !== nextProps.node.v;
+    return this._v !== nextProps.node.v;
   }
 }

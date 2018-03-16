@@ -42,7 +42,14 @@ t.onTerminalReady = function() {
 
 t.decorate(document.querySelector('#terminal'));
 
-for (var i = 0; i < 10000; i++) {
-  t.io.println('Print a string without a newline long line here');
-  t.io.println('Print a string and add CRLF and there');
-}
+var i = 0;
+var r = 0;
+setInterval(function() {
+  i++;
+  t.io.print(i.toString());
+  if (i > 300) {
+    i = 0;
+    t.io.println('\r\n' + r + '    nice');
+    r++;
+  }
+}, 1);
