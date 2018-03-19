@@ -136,6 +136,75 @@ hterm.Terminal.prototype.eraseToRight = function(opt_count) {
   this.clearCursorOverflow();
 };
 
+hterm.Terminal.prototype.eraseAbove = function() {
+  var cursor = this.saveCursor();
+
+  this.eraseToLeft();
+
+  for (var i = 0; i < cursor.row; i++) {
+    this.setAbsoluteCursorPosition(i, 0);
+    this.screen_.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    if (cursorRow) {
+      this.scrollPort_.renderRef.touchRow(cursorRow);
+    }
+  }
+
+  this.restoreCursor(cursor);
+  this.clearCursorOverflow();
+};
+
+hterm.Terminal.prototype.eraseLine = function() {
+  var cursor = this.saveCursor();
+  this.screen_.clearCursorRow();
+  var cursorRow = this.screen_.cursorRow();
+  if (cursorRow) {
+    this.scrollPort_.renderRef.touchRow(cursorRow);
+  }
+  this.restoreCursor(cursor);
+  this.clearCursorOverflow();
+};
+
+hterm.Terminal.prototype.clearHome = function(opt_screen) {
+  var screen = opt_screen || this.screen_;
+  var bottom = screen.getHeight();
+
+  if (bottom == 0) {
+    // Empty screen, nothing to do.
+    return;
+  }
+
+  for (var i = 0; i < bottom; i++) {
+    screen.setCursorPosition(i, 0);
+    screen.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    if (cursorRow) {
+      this.scrollPort_.renderRef.touchRow(cursorRow);
+    }
+  }
+
+  screen.setCursorPosition(0, 0);
+};
+
+hterm.Terminal.prototype.eraseBelow = function() {
+  var cursor = this.saveCursor();
+
+  this.eraseToRight();
+
+  var bottom = this.screenSize.height - 1;
+  for (var i = cursor.row + 1; i <= bottom; i++) {
+    this.setAbsoluteCursorPosition(i, 0);
+    this.screen_.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    if (cursorRow) {
+      this.scrollPort_.renderRef.touchRow(cursorRow);
+    }
+  }
+
+  this.restoreCursor(cursor);
+  this.clearCursorOverflow();
+};
+
 hterm.Terminal.prototype.print = function(str) {
   var startOffset = 0;
 
@@ -377,7 +446,7 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
     var color = attrs.colorPalette[i];
     rows.push('.c' + index + ' { color: ' + color + ';}');
     rows.push('.fc' + index + ' { color: ' + color + ';}');
-    rows.push('.bc' + index + ' { backgroundColor: ' + color + ';}');
+    rows.push('.bc' + index + ' { background: ' + color + ';}');
     rows.push('.uc' + index + ' { text-decoration-color: ' + color + ';}');
   }
   rows.push('.u { text-decoration: underline;}');
@@ -388,7 +457,7 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   //dashed: 'u5',
   rows.push('.b { font-weight: bold;}');
   rows.push('.i { font-style: italic;}');
-  for (var i = 0; i < 1000; i++) {
+  for (var i = 0; i < 500; i++) {
     rows.push(
       '.wc' +
         i +
@@ -650,6 +719,7 @@ export default class RScreen {
     if (row === this._cursorRowIdx) {
       if (column >= this.cursorPosition.column - this._cursorOffset) {
         nodeIdx = this._cursorNodeIdx;
+        node = rowNode.nodes[nodeIdx];
         currentColumn = this.cursorPosition.column - this._cursorOffset;
       }
     } else {
@@ -660,15 +730,14 @@ export default class RScreen {
 
     while (node) {
       var offset = column - currentColumn;
-      var width = node.wcwidth;
-      if (!rowNode[nodeIdx + 1] || width > offset) {
+      if (!rowNode.nodes[nodeIdx + 1] || node.wcwidth > offset) {
         this._cursorNodeIdx = nodeIdx;
         this._cursorOffset = offset;
         return;
       }
 
-      currentColumn += width;
-      node = rowNode[nodeIdx++];
+      currentColumn += node.wcwidth;
+      node = rowNode.nodes[++nodeIdx];
     }
   }
 
@@ -878,7 +947,7 @@ export default class RScreen {
         return;
       }
 
-      var newNode = this.textAttributes.createNode(str);
+      var newNode = this.textAttributes.createNode(str, wcwidth);
       cursorRow.nodes.splice(this._cursorNodeIdx + 1, 0, newNode);
       this._cursorNodeIdx++;
       // We specifically need to include any missing whitespace here, since it's
@@ -892,8 +961,9 @@ export default class RScreen {
     var nodes = this._splitNode(cursorNode, offset);
     var newNode = this.textAttributes.createNode(str);
     this._cursorNodeIdx++;
-    cursorRow.nodes.splice(this._cursorNodeIdx, 0, nodes[1], newNode);
-    this._cursorOffset = wcwidth;
+    cursorRow.nodes.splice(this._cursorNodeIdx, 0, newNode, nodes[1]);
+    this._cursorNodeIdx++;
+    this._cursorOffset = 0;
   }
 
   overwriteString(str: string, wcwidth: number) {
@@ -905,7 +975,7 @@ export default class RScreen {
 
     if (
       this.textAttributes.matchesNode(cursorNode) &&
-      cursorNode.txt.substr(this._cursorOffset) == str
+      cursorNode.txt.substr(this._cursorOffset) === str
     ) {
       // This overwrite would be a no-op, just move the cursor and return.
       this._cursorOffset += wcwidth;
@@ -913,9 +983,7 @@ export default class RScreen {
       return;
     }
 
-    console.log('insert [' + wcwidth + ']: ' + str);
     this.insertString(str, wcwidth);
-    console.log('delete [' + wcwidth + ']: ');
     this.deleteChars(wcwidth);
     __touch(cursorRowNode);
   }
@@ -927,8 +995,6 @@ export default class RScreen {
     var offset = this._cursorOffset;
     var len = cursorRowNode.nodes.length;
     var rv = count;
-
-    console.log('rv: ' + rv);
 
     for (var nodeIdx = this._cursorNodeIdx; nodeIdx < len; nodeIdx++) {
       if (count < 0) {
@@ -1010,6 +1076,7 @@ export default class RScreen {
 
     return rv;
   }
+
   _getLineStartRow(row: RRowType): RRowType {
     var rowIdx = this.rowsArray.indexOf(row);
     if (rowIdx <= 0) {
