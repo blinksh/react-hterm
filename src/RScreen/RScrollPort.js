@@ -41,7 +41,7 @@ class RowsRenderer extends Component<*, StateType> {
   touchRow(row: RRowType) {
     var rowRef = this._rowRefs[row.number];
     if (rowRef) {
-      rowRef.touch();
+      rowRef.forceUpdate();
     }
   }
 }

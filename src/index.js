@@ -1,11 +1,12 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
 import './index.css';
-import App from './App';
-import RScrollPort from './RScreen/RScrollPort';
 import { hterm, lib } from './hterm_all';
-import { RScreen } from './RScreen/RScreen';
+import RScrollPort from './RScreen/RScrollPort';
+import RScreen from './RScreen/RScreen';
 
+window.hterm = hterm;
+window.lib = lib;
+
+/*
 // If you are a cross-browser web app and want in-memory storage only.
 hterm.defaultStorage = new lib.Storage.Memory();
 
@@ -49,7 +50,9 @@ setInterval(function() {
   t.io.print(i.toString());
   if (i > 300) {
     i = 0;
-    t.io.println('\r\n' + r + '    nice');
+    t.io.println('\r\n\u001b[0;31m' + r + '\u001b[0m    nice  привет');
     r++;
   }
 }, 1);
+
+*/

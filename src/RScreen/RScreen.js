@@ -6,34 +6,17 @@ import { hterm, lib } from '../hterm_all.js';
 
 var __nodeKey = 0;
 
-function __findReactComponent(el) {
-  for (const key in el) {
-    if (key.startsWith('__reactInternalInstance$')) {
-      const fiberNode = el[key];
-
-      return fiberNode && fiberNode.return && fiberNode.return.stateNode;
-    }
-  }
-  return null;
-}
+const __defaultClassName = '';
 
 function __defaultAttributes(): RAttributesType {
   return {
-    foreground: null,
-    background: null,
-    underlineColor: null,
-    bold: false,
-    faint: false,
-    italic: false,
-    blink: false,
-    underline: false,
-    strikethrough: false,
-    inverse: false,
-    invisible: false,
+    fc: '',
+    bc: '',
+    uc: '',
+    className: __defaultClassName,
+    isDefault: true,
     wcNode: false,
     asciiNode: true,
-    uri: null,
-    uriId: null,
   };
 }
 
@@ -47,7 +30,7 @@ function __genNodeKey(): string {
 
 function __setNodeText(node: RNodeType, text) {
   node.txt = text;
-  if (node.attrs.ascii) {
+  if (node.attrs.asciiNode) {
     node.wcwidth = text.length;
   } else {
     node.wcwidth = lib.wc.strWidth(text);
@@ -66,14 +49,14 @@ function __createRNode(text: string, wcwidth: number): RNodeType {
 }
 
 function __nodeSubstr(node: RNodeType, start: number, width: number | void) {
-  if (node.attrs.ascii) {
+  if (node.attrs.asciiNode) {
     return node.txt.substr(start, width);
   }
   return lib.wc.substr(node.txt, start, width);
 }
 
 function __nodeSubstring(node: RNodeType, start: number, end: number) {
-  if (node.attrs.ascii) {
+  if (node.attrs.asciiNode) {
     return node.txt.substring(start, end);
   }
   return lib.wc.substring(node.txt, start, end);
@@ -94,7 +77,7 @@ function __rowWidth(row: RRowType): number {
 
 function __rowText(row: RRowType): string {
   var rowText = '';
-  for (var i = 0; i < row.nodes.length; i++) {
+  for (var i = 0, len = row.nodes.length; i < len; i++) {
     rowText += row.nodes[i].txt;
   }
 
@@ -125,6 +108,32 @@ hterm.Terminal.prototype.appendRows_ = function(count) {
     cursorRow = this.screen_.rowsArray.length - 1;
 
   this.setAbsoluteCursorPosition(cursorRow, 0);
+};
+
+hterm.Terminal.prototype.eraseToRight = function(opt_count) {
+  if (this.screen_.cursorPosition.overflow) return;
+
+  var maxCount = this.screenSize.width - this.screen_.cursorPosition.column;
+  var count = opt_count ? Math.min(opt_count, maxCount) : maxCount;
+
+  if (
+    this.screen_.textAttributes.background ===
+    this.screen_.textAttributes.DEFAULT_COLOR
+  ) {
+    var cursorRow = this.screen_.rowsArray[this.screen_.cursorPosition.row];
+    if (__rowWidth(cursorRow) <= this.screen_.cursorPosition.column + count) {
+      this.screen_.deleteChars(count);
+      this.clearCursorOverflow();
+      __touch(cursorRow);
+      this.scrollPort_.renderRef.touchRow(cursorRow);
+      return;
+    }
+  }
+
+  var cursor = this.saveCursor();
+  this.screen_.overwriteString(lib.f.getWhitespace(count), count);
+  this.restoreCursor(cursor);
+  this.clearCursorOverflow();
 };
 
 hterm.Terminal.prototype.print = function(str) {
@@ -192,31 +201,38 @@ hterm.Terminal.prototype.print = function(str) {
     this.scrollPort_.scrollRowToBottom(this.getRowCount());
 };
 
+hterm.TextAttributes.prototype.resetColorPalette = function() {
+  this.colorPalette = lib.colors.colorPalette.concat();
+
+  if (!this._styleSheet) {
+    var style = document.createElement('style');
+    style.type = 'text/css';
+    this.document_.getElementsByTagName('head')[0].appendChild(style);
+    this._styleSheet = style;
+  }
+  this._styleSheet.innerHTML = __generateAttributesStyleSheet(this);
+  this.syncColors();
+};
+
 hterm.TextAttributes.prototype.createNode = function(
   text: string,
   wcwidth: number | void,
 ): RNodeType {
   var attrs = __defaultAttributes();
 
-  attrs.foreground = this.foreground;
-  attrs.background = this.background;
-  attrs.underlineColor = this.underlineColor;
+  attrs.isDefault = this.isDefault();
 
-  // TODO: encode to uint
-  attrs.bold = this.bold;
-  attrs.faint = this.faint;
-  attrs.italic = this.italic;
-  attrs.blink = this.blink;
-  attrs.underline = this.underline;
-  attrs.strikethrough = this.strikethrough;
-  attrs.inverse = this.inverse;
-  attrs.invisible = this.invisible;
+  if (!attrs.isDefault) {
+    attrs.wcNode = this.wcNode;
+    attrs.asciiNode = this.asciiNode;
 
-  attrs.wcNode = this.wcNode;
-  attrs.asciiNode = this.asciiNode;
-
-  attrs.uri = this.uri;
-  attrs.uriId = this.uriId;
+    if (this.uri) {
+      attrs.uri = this.uri;
+    }
+    if (this.uriId) {
+      attrs.uriId = this.uriId;
+    }
+  }
 
   if (wcwidth === undefined) {
     if (this.asciiNode) {
@@ -225,6 +241,8 @@ hterm.TextAttributes.prototype.createNode = function(
       wcwidth = lib.wc.strWidth(text);
     }
   }
+
+  attrs.className = this.className;
 
   return {
     v: 0,
@@ -235,29 +253,220 @@ hterm.TextAttributes.prototype.createNode = function(
   };
 };
 
+hterm.TextAttributes.prototype.reset = function() {
+  this.foregroundSource = this.SRC_DEFAULT;
+  this.backgroundSource = this.SRC_DEFAULT;
+  this.underlineSource = this.SRC_DEFAULT;
+  this.foreground = this.DEFAULT_COLOR;
+  this.background = this.DEFAULT_COLOR;
+  this.underlineColor = this.DEFAULT_COLOR;
+  this.bold = false;
+  this.faint = false;
+  this.italic = false;
+  this.blink = false;
+  this.underline = false;
+  this.strikethrough = false;
+  this.inverse = false;
+  this.invisible = false;
+  this.wcNode = false;
+  this.asciiNode = true;
+  this.uri = null;
+  this.uriId = null;
+  this.className == __defaultClassName;
+};
+
+hterm.TextAttributes.prototype.syncColors = function() {
+  function getBrightIndex(i) {
+    if (i < 8) {
+      // If the color is from the lower half of the ANSI 16, add 8.
+      return i + 8;
+    }
+
+    // If it's not from the 16 color palette, ignore bold requests.  This
+    // matches the behavior of gnome-terminal.
+    return i;
+  }
+
+  var foregroundSource = this.foregroundSource;
+  var backgroundSource = this.backgroundSource;
+  var defaultForeground = this.DEFAULT_COLOR;
+  var defaultBackground = this.DEFAULT_COLOR;
+
+  if (this.inverse) {
+    foregroundSource = this.backgroundSource;
+    backgroundSource = this.foregroundSource;
+    // We can't inherit the container's color anymore.
+    defaultForeground = this.defaultBackground;
+    defaultBackground = this.defaultForeground;
+  }
+
+  if (this.enableBoldAsBright && this.bold) {
+    if (Number.isInteger(foregroundSource)) {
+      foregroundSource = getBrightIndex(foregroundSource);
+    }
+  }
+
+  if (foregroundSource === this.SRC_DEFAULT) {
+    this.foreground = defaultForeground;
+  } else {
+    this.foreground = foregroundSource;
+  }
+
+  if (this.faint) {
+    if (Number.isInteger(this.foreground)) {
+      this.foreground = this.colorPalette[this.foreground];
+    }
+    var colorToMakeFaint =
+      this.foreground == this.DEFAULT_COLOR
+        ? this.defaultForeground
+        : this.foreground;
+    this.foreground = lib.colors.mix(colorToMakeFaint, 'rgb(0, 0, 0)', 0.3333);
+  }
+
+  if (backgroundSource === this.SRC_DEFAULT) {
+    this.background = defaultBackground;
+  } else {
+    this.background = backgroundSource;
+  }
+
+  // Process invisible settings last to keep it simple.
+  if (this.invisible) {
+    this.foreground = this.background;
+  }
+
+  if (this.underlineSource === this.SRC_DEFAULT) {
+    this.underlineColor = this.DEFAULT_COLOR;
+  } else {
+    this.underlineColor = this.underlineSource;
+  }
+
+  this.className = __generateClassName(this);
+};
+
+var __c = []; // foreground color
+var __fc = []; // faint foreground color
+var __bc = []; // background color
+var __uc = []; // underline color
+var __b = 'b'; // bold
+var __bl = 'bl'; // blink
+var __s = 's'; // blink
+var __u = {
+  solid: 'u1',
+  double: 'u2',
+  wavy: 'u3',
+  dotted: 'u4',
+  dashed: 'u5',
+}; // underline
+var __i = 'i'; // italic
+var __invisible = 'invbl'; // invisible
+var __wc = 'wc'; // widechar
+
+for (var i = 0; i < 256; i++) {
+  var index = i.toString(16);
+
+  __c[i] = 'c' + index;
+  __fc[i] = 'fc' + index;
+  __bc[i] = 'bc' + index;
+  __uc[i] = 'uc' + index;
+}
+
+function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
+  var rows = [];
+  for (var i = 0; i < 256; i++) {
+    var index = i.toString(16);
+    var color = attrs.colorPalette[i];
+    rows.push('.c' + index + ' { color: ' + color + ';}');
+    rows.push('.fc' + index + ' { color: ' + color + ';}');
+    rows.push('.bc' + index + ' { backgroundColor: ' + color + ';}');
+    rows.push('.uc' + index + ' { text-decoration-color: ' + color + ';}');
+  }
+  rows.push('.u { text-decoration: underline;}');
+  //solid: 'u1',
+  //double: 'u2',
+  //wavy: 'u3',
+  //dotted: 'u4',
+  //dashed: 'u5',
+  rows.push('.b { font-weight: bold;}');
+  rows.push('.i { font-style: italic;}');
+  for (var i = 0; i < 1000; i++) {
+    rows.push(
+      '.wc' +
+        i +
+        ' { display: inline-block; overflow-x:hidden; width: calc(var(--hterm-charsize-width) * ' +
+        i +
+        ');}',
+    );
+  }
+  return rows.join('\n');
+}
+
+var __classNameMemory = new Map();
+
+function __generateClassName(attrs: hterm.TextAttributes): string {
+  var result = [];
+
+  if (attrs.foreground < 256 && attrs.foreground != '') {
+    result.push(__c[attrs.foreground]);
+  }
+  if (attrs.background < 256 && attrs.background != '') {
+    result.push(__bc[attrs.background]);
+  }
+  if (attrs.underlineColor < 256 && attrs.underlineColor != '') {
+    result.push(__uc[attrs.underlineColor]);
+  }
+
+  if (attrs.enableBold && attrs.bold) {
+    result.push(__b);
+  }
+  if (attrs.italic) {
+    result.push(__i);
+  }
+  if (attrs.blink) {
+    result.push(__bl);
+  }
+  if (attrs.underline) {
+    result.push(__u[attrs.underline]);
+  }
+  if (attrs.strikethrough) {
+    result.push(__s);
+  }
+  if (attrs.invisible) {
+    result.push(__invisible);
+  }
+
+  if (result.length) {
+    var name = result.join(' ');
+    var cached = __classNameMemory.get(name);
+    if (cached) {
+      return cached;
+    }
+    if (__classNameMemory.size < 1000) {
+      __classNameMemory.set(name, name);
+    }
+    return name;
+  }
+  return __defaultClassName;
+}
+
 hterm.TextAttributes.prototype.matchesNode = function(
   node: RNodeType,
 ): boolean {
   var attrs = node.attrs;
 
+  if (attrs.isDefault) {
+    return this.isDefault();
+  }
+
   // We don't want to put multiple characters in a wcNode or a tile.
-  // See the comments in createContainer.
+  // See the comments in createNode.
   // For attributes that default to false, we do not require that obj have them
   // declared, so always normalize them using !! (to turn undefined into false)
   // in the compares below.
   return (
     !(this.wcNode || attrs.wcNode) &&
-    this.asciiNode === attrs.asciiNode &&
     !(this.tileData != null || attrs.tileData) &&
     this.uriId === attrs.uriId &&
-    this.foreground === attrs.foreground &&
-    this.background === attrs.background &&
-    this.underlineColor === attrs.underlineColor &&
-    (this.enableBold && this.bold) === this.bold &&
-    this.blink === attrs.blink &&
-    this.italic === attrs.italic &&
-    this.underline === attrs.underline &&
-    this.strikethrough === attrs.strikethrough
+    this.className === attrs.className
   );
 };
 
@@ -357,7 +566,7 @@ export default class RScreen {
   }
 
   removeRows = function(index: number, count: number) {
-    return this.state.rows.splice(index, count);
+    return this.rowsArray.splice(index, count);
   };
 
   invalidateCursorPosition() {
@@ -595,6 +804,7 @@ export default class RScreen {
         // original string.
         str = ws + str;
       } else if (
+        cursorNode.attrs.isDefault ||
         !(
           cursorNode.attrs.underline ||
           cursorNode.attrs.strikethrough ||
@@ -680,7 +890,7 @@ export default class RScreen {
     // Worst case, we're somewhere in the middle of the cursor node.  We'll
     // have to split it into two nodes and insert our new container in between.
     var nodes = this._splitNode(cursorNode, offset);
-    var newNode = this.textAttributes.createContainer(str);
+    var newNode = this.textAttributes.createNode(str);
     this._cursorNodeIdx++;
     cursorRow.nodes.splice(this._cursorNodeIdx, 0, nodes[1], newNode);
     this._cursorOffset = wcwidth;
@@ -703,80 +913,100 @@ export default class RScreen {
       return;
     }
 
-    this.deleteChars(Math.min(wcwidth, maxLength));
+    console.log('insert [' + wcwidth + ']: ' + str);
     this.insertString(str, wcwidth);
+    console.log('delete [' + wcwidth + ']: ');
+    this.deleteChars(wcwidth);
     __touch(cursorRowNode);
   }
 
   deleteChars(count: number) {
     var cursorRowNode = this.rowsArray[this._cursorRowIdx];
-
-    var nodeIdx = this._cursorNodeIdx;
-    var node = cursorRowNode.nodes[nodeIdx];
+    var spliceIdx = this._cursorNodeIdx;
+    var spliceDeleteCount = 0;
     var offset = this._cursorOffset;
-
-    var currentCursorColumn = this.cursorPosition.column;
-    count = Math.min(count, this._columnCount - currentCursorColumn);
-    if (!count) return 0;
-
+    var len = cursorRowNode.nodes.length;
     var rv = count;
-    var startLength, endLength;
 
-    while (node && count) {
-      // Sanity check so we don't loop forever, but we don't also go quietly.
+    console.log('rv: ' + rv);
+
+    for (var nodeIdx = this._cursorNodeIdx; nodeIdx < len; nodeIdx++) {
       if (count < 0) {
         console.error(`Deleting ${rv} chars went negative: ${count}`);
         break;
       }
 
-      startLength = node.wcwidth;
-      __setNodeText(
-        node,
-        __nodeSubstr(node, 0, offset) + __nodeSubstr(node, offset + count),
-      );
-      endLength = node.wcwidth;
+      var node = cursorRowNode.nodes[nodeIdx];
 
-      // Deal with splitting wide characters.  There are two ways: we could delete
-      // the first column or the second column.  In both cases, we delete the wide
-      // character and replace one of the columns with a space (since the other
-      // was deleted).  If there are more chars to delete, the next loop will pick
-      // up the slack.
-      if (
-        node.attrs.wcNode &&
-        offset < startLength &&
-        ((endLength && startLength == endLength) || (!endLength && offset == 1))
-      ) {
-        // No characters were deleted when there should be.  We're probably trying
-        // to delete one column width from a wide character node.  We remove the
-        // wide character node here and replace it with a single space.
-        var spaceNode = this.textAttributes.createNode(' ', 1);
-        cursorRowNode.nodes.splice(
-          offset ? nodeIdx + 1 : nodeIdx,
-          0,
-          spaceNode,
-        );
-        node.txt = '';
-        node.wcwidth = 0;
-        endLength = 0;
-        count -= 1;
-      } else count -= startLength - endLength;
+      var startWidth = node.wcwidth;
 
-      var nextNode = cursorRowNode.nodes[nodeIdx + 1];
-      if (endLength == 0 && nodeIdx != this._cursorNodeIdx) {
-        cursorRowNode.nodes.splice(nodeIdx, 1);
+      if (offset > 0) {
+        if (startWidth - offset === count) {
+          __setNodeText(node, __nodeSubstr(node, 0, offset));
+          return rv;
+        }
+
+        if (startWidth - offset > count) {
+          __setNodeText(
+            node,
+            __nodeSubstr(node, 0, offset) + __nodeSubstr(node, offset + count),
+          );
+          return rv;
+        }
+
+        __setNodeText(node, __nodeSubstr(node, 0, offset));
+        var isLastNode = !cursorRowNode.nodes[nodeIdx + 1];
+        if (isLastNode) {
+          return rv;
+        }
+
+        count -= startWidth - offset;
+        offset = 0;
+        spliceIdx++;
+        continue;
       }
-      nodeIdx++;
-      node = cursorRowNode.nodes[nodeIdx];
-      node = nextNode;
-      offset = 0;
+
+      // offset === 0
+
+      // Just remove node
+      if (startWidth <= count) {
+        spliceDeleteCount++;
+        count -= startWidth;
+        continue;
+      }
+
+      // last modification
+      __setNodeText(node, __nodeSubstr(node, count));
+      break;
     }
 
-    // Remove this.cursorNode_ if it is an empty non-text node.
-
-    var cursorNode = cursorRowNode.nodes[this._cursorNodeIdx];
-    if (!cursorNode.txt) {
-      cursorRowNode.nodes.splice(this._cursorNodeIdx, 1, __createRNode('', 0));
+    if (spliceDeleteCount === 0) {
+      return rv;
     }
+
+    cursorRowNode.nodes.splice(spliceIdx, spliceDeleteCount);
+
+    if (spliceIdx > this._cursorNodeIdx) {
+      return rv;
+    }
+
+    // We deleted cursor.
+
+    len = cursorRowNode.nodes.length;
+    if (len === 0) {
+      cursorRowNode.nodes = [__createRNode('', 0)];
+      this._cursorNodeIdx = 0;
+      this._cursorOffset = 0;
+      return rv;
+    }
+
+    if (len >= this._cursorNodeIdx) {
+      this._cursorNodeIdx = len - 1;
+      this._cursorOffset = cursorRowNode.nodes[len - 1].wcwidth;
+      return rv;
+    }
+
+    this._cursorOffset = 0;
 
     return rv;
   }
