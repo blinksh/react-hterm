@@ -166,7 +166,7 @@ hterm.Terminal.prototype.clearHome = function(opt_screen) {
   var screen = opt_screen || this.screen_;
   var bottom = screen.getHeight();
 
-  if (bottom == 0) {
+  if (bottom === 0) {
     // Empty screen, nothing to do.
     return;
   }
@@ -342,7 +342,7 @@ hterm.TextAttributes.prototype.reset = function() {
   this.asciiNode = true;
   this.uri = null;
   this.uriId = null;
-  this.className == __defaultClassName;
+  this.className = __defaultClassName;
 };
 
 hterm.TextAttributes.prototype.syncColors = function() {
@@ -387,7 +387,7 @@ hterm.TextAttributes.prototype.syncColors = function() {
       this.foreground = this.colorPalette[this.foreground];
     }
     var colorToMakeFaint =
-      this.foreground == this.DEFAULT_COLOR
+      this.foreground === this.DEFAULT_COLOR
         ? this.defaultForeground
         : this.foreground;
     this.foreground = lib.colors.mix(colorToMakeFaint, 'rgb(0, 0, 0)', 0.3333);
@@ -533,8 +533,8 @@ hterm.TextAttributes.prototype.matchesNode = function(
   return (
     !(this.wcNode || attrs.wcNode) &&
     !(this.tileData != null || attrs.tileData) &&
-    this.uriId === attrs.uriId &&
-    this.className === attrs.className
+    this.className === attrs.className &&
+    this.uriId === attrs.uriId
   );
 };
 

@@ -19,14 +19,14 @@ class RowsRenderer extends React.Component<*, StateType> {
   }
 
   render() {
-    const rows = this.props.rows;
+    const rows = this.state.rows;
     const len = rows.length;
     const elements = new Array(len);
     for (var i = 0; i < len; i++) {
       var row = rows[i];
       elements[i] = React.createElement(RRow, {
         rowRefs: this._rowRefs,
-        key: row.key,
+        key: row.n,
         row: row,
       });
     }

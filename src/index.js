@@ -1,4 +1,3 @@
-import './index.css';
 import { hterm, lib } from './hterm_all';
 import RScrollPort from './RScreen/RScrollPort';
 import RScreen from './RScreen/RScreen';

@@ -17,6 +17,7 @@
   "devDependencies": {
     "flow-bin": "^0.67.1",
     "flow-typed": "^2.4.0",
-    "prettier": "^1.11.1"
+    "prettier": "^1.11.1",
+    "serve": "^6.5.3"
   }
 }
