@@ -7,12 +7,13 @@ import { hterm, lib } from '../hterm_all.js';
 var __nodeKey = 0;
 
 const __defaultClassName = '';
+const __defaultColor = '';
 
 function __defaultAttributes(): RAttributesType {
   return {
-    fc: '',
-    bc: '',
-    uc: '',
+    fc: __defaultColor,
+    bc: __defaultColor,
+    uc: __defaultColor,
     className: __defaultClassName,
     isDefault: true,
     wcNode: false,
@@ -28,12 +29,12 @@ function __genNodeKey(): string {
   return (__nodeKey++ % 1000000).toString(32);
 }
 
-function __setNodeText(node: RNodeType, text) {
+function __setNodeText(node: RNodeType, text: string) {
   node.txt = text;
   if (node.attrs.asciiNode) {
-    node.wcwidth = text.length;
+    node.wcw = text.length;
   } else {
-    node.wcwidth = lib.wc.strWidth(text);
+    node.wcw = lib.wc.strWidth(text);
   }
   __touch(node);
 }
@@ -42,7 +43,7 @@ function __createRNode(text: string, wcwidth: number): RNodeType {
   return {
     v: 0,
     txt: text,
-    wcwidth,
+    wcw: wcwidth,
     key: __genNodeKey(),
     attrs: __defaultAttributes(),
   };
@@ -55,21 +56,14 @@ function __nodeSubstr(node: RNodeType, start: number, width: number | void) {
   return lib.wc.substr(node.txt, start, width);
 }
 
-function __nodeSubstring(node: RNodeType, start: number, end: number) {
-  if (node.attrs.asciiNode) {
-    return node.txt.substring(start, end);
-  }
-  return lib.wc.substring(node.txt, start, end);
-}
-
 function __rowWidth(row: RRowType): number {
   var result = 0;
 
-  var nodes = row.nodes;
+  const nodes = row.nodes;
   var len = nodes.length;
 
   for (var i = 0; i < len; i++) {
-    result += nodes[i].wcwidth;
+    result += nodes[i].wcw;
   }
 
   return result;
@@ -85,12 +79,15 @@ function __rowText(row: RRowType): string {
 }
 
 hterm.Terminal.prototype.appendRows_ = function(count) {
+  if (this.scrollbackRows_.length > 4000) {
+    this.scrollbackRows_.splice(0, 2000);
+  }
   var cursorRow = this.screen_.rowsArray.length;
   var offset = this.scrollbackRows_.length + cursorRow;
   for (var i = 0; i < count; i++) {
     var row: RRowType = {
-      number: offset + i,
-      lineOverflow: false,
+      n: offset + i,
+      o: false,
       v: 0,
       nodes: [__createRNode('', 0)],
     };
@@ -211,7 +208,7 @@ hterm.Terminal.prototype.print = function(str) {
   var strWidth = lib.wc.strWidth(str);
   // Fun edge case: If the string only contains zero width codepoints (like
   // combining characters), we make sure to iterate at least once below.
-  if (strWidth == 0 && str) strWidth = 1;
+  if (strWidth === 0 && str) strWidth = 1;
 
   while (startOffset < strWidth) {
     if (this.options_.wraparound && this.screen_.cursorPosition.overflow) {
@@ -241,26 +238,28 @@ hterm.Terminal.prototype.print = function(str) {
     }
 
     var tokens = hterm.TextAttributes.splitWidecharString(substr);
-    for (var i = 0; i < tokens.length; i++) {
-      this.screen_.textAttributes.wcNode = tokens[i].wcNode;
-      this.screen_.textAttributes.asciiNode = tokens[i].asciiNode;
+    var len = tokens.length;
+    for (var i = 0; i < len; i++) {
+      var token = tokens[i];
+      this.screen_.textAttributes.wcNode = token.wcNode;
+      this.screen_.textAttributes.asciiNode = token.asciiNode;
 
       if (this.options_.insertMode) {
-        this.screen_.insertString(tokens[i].str, tokens[i].wcStrWidth);
+        this.screen_.insertString(token.str, token.wcStrWidth);
       } else {
-        this.screen_.overwriteString(tokens[i].str, tokens[i].wcStrWidth);
+        this.screen_.overwriteString(token.str, token.wcStrWidth);
       }
       this.screen_.textAttributes.wcNode = false;
       this.screen_.textAttributes.asciiNode = true;
     }
+
+    this.screen_.maybeClipCurrentRow();
 
     // Touch cursor row;
     var cursorRow = this.screen_.cursorRow();
     if (cursorRow) {
       this.scrollPort_.renderRef.touchRow(cursorRow);
     }
-
-    this.screen_.maybeClipCurrentRow();
     startOffset += count;
   }
 
@@ -270,16 +269,18 @@ hterm.Terminal.prototype.print = function(str) {
     this.scrollPort_.scrollRowToBottom(this.getRowCount());
 };
 
+var __cssStyleSheet = null;
+
 hterm.TextAttributes.prototype.resetColorPalette = function() {
   this.colorPalette = lib.colors.colorPalette.concat();
 
-  if (!this._styleSheet) {
+  if (!__cssStyleSheet) {
     var style = document.createElement('style');
     style.type = 'text/css';
     this.document_.getElementsByTagName('head')[0].appendChild(style);
-    this._styleSheet = style;
+    __cssStyleSheet = style;
   }
-  this._styleSheet.innerHTML = __generateAttributesStyleSheet(this);
+  __cssStyleSheet.innerHTML = __generateAttributesStyleSheet(this);
   this.syncColors();
 };
 
@@ -316,7 +317,7 @@ hterm.TextAttributes.prototype.createNode = function(
   return {
     v: 0,
     txt: text,
-    wcwidth,
+    wcw: wcwidth,
     key: __genNodeKey(),
     attrs,
   };
@@ -413,7 +414,6 @@ hterm.TextAttributes.prototype.syncColors = function() {
 };
 
 var __c = []; // foreground color
-var __fc = []; // faint foreground color
 var __bc = []; // background color
 var __uc = []; // underline color
 var __b = 'b'; // bold
@@ -431,10 +431,9 @@ var __invisible = 'invbl'; // invisible
 var __wc = 'wc'; // widechar
 
 for (var i = 0; i < 256; i++) {
-  var index = i.toString(16);
+  const index = i.toString(16);
 
   __c[i] = 'c' + index;
-  __fc[i] = 'fc' + index;
   __bc[i] = 'bc' + index;
   __uc[i] = 'uc' + index;
 }
@@ -444,10 +443,9 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   for (var i = 0; i < 256; i++) {
     var index = i.toString(16);
     var color = attrs.colorPalette[i];
-    rows.push('.c' + index + ' { color: ' + color + ';}');
-    rows.push('.fc' + index + ' { color: ' + color + ';}');
-    rows.push('.bc' + index + ' { background: ' + color + ';}');
-    rows.push('.uc' + index + ' { text-decoration-color: ' + color + ';}');
+    rows.push('span.c' + index + ' { color: ' + color + ';}');
+    rows.push('span.bc' + index + ' { background: ' + color + ';}');
+    rows.push('span.uc' + index + ' { text-decoration-color: ' + color + ';}');
   }
   rows.push('.u { text-decoration: underline;}');
   //solid: 'u1',
@@ -455,13 +453,14 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   //wavy: 'u3',
   //dotted: 'u4',
   //dashed: 'u5',
-  rows.push('.b { font-weight: bold;}');
-  rows.push('.i { font-style: italic;}');
-  for (var i = 0; i < 500; i++) {
+  rows.push('span.b { font-weight: bold;}');
+  rows.push('span.i { font-style: italic;}');
+  rows.push('span.wc { display: inline-block; overflow-x:hidden; }');
+  for (var i = 0; i < 300; i++) {
     rows.push(
-      '.wc' +
+      'span.wc' +
         i +
-        ' { display: inline-block; overflow-x:hidden; width: calc(var(--hterm-charsize-width) * ' +
+        ' { width: calc(var(--hterm-charsize-width) * ' +
         i +
         ');}',
     );
@@ -666,7 +665,7 @@ export default class RScreen {
     var node = this.textAttributes.createNode(text, text.length);
     var row = this.rowsArray[this._cursorRowIdx];
     row.nodes = [node];
-    row.lineOverflow = false;
+    row.o = false;
     __touch(row);
     this._cursorNodeIdx = 0;
 
@@ -676,7 +675,7 @@ export default class RScreen {
 
   commitLineOverflow() {
     var row = this.rowsArray[this._cursorRowIdx];
-    row.lineOverflow = true;
+    row.o = true;
     __touch(row);
   }
 
@@ -705,8 +704,8 @@ export default class RScreen {
     this.cursorPosition.overflow = false;
 
     var rowNode = this.rowsArray[row];
-    var node = rowNode.nodes[0];
     var nodeIdx = 0;
+    var node = rowNode.nodes[0];
 
     if (!node) {
       node = __createRNode('', 0);
@@ -728,20 +727,27 @@ export default class RScreen {
 
     this.cursorPosition.move(row, column);
 
+    if (column === 0) {
+      this._cursorNodeIdx = 0;
+      this._cursorOffset = 0;
+      return;
+    }
+
     while (node) {
       var offset = column - currentColumn;
-      if (!rowNode.nodes[nodeIdx + 1] || node.wcwidth > offset) {
+      if (!rowNode.nodes[nodeIdx + 1] || node.wcw > offset) {
         this._cursorNodeIdx = nodeIdx;
         this._cursorOffset = offset;
         return;
       }
 
-      currentColumn += node.wcwidth;
+      currentColumn += node.wcw;
       node = rowNode.nodes[++nodeIdx];
     }
   }
 
   syncSelectionCaret(selection: any) {
+    selection.collapse(null);
     // TODO:
     //try {
     //selection.collapse(this.cursorNode_, this.cursorOffset_);
@@ -751,11 +757,15 @@ export default class RScreen {
     //}
   }
 
-  _splitNode(node: RNodeType, offset: number): RNodeType[] {
+  _insertNode(
+    node: RNodeType,
+    offset: number,
+    separator: RNodeType,
+  ): RNodeType[] {
     var afterNode: RNodeType = {
       key: __genNodeKey(),
       txt: node.txt,
-      wcwidth: node.wcwidth,
+      wcw: node.wcw,
       attrs: node.attrs,
       v: 0,
     };
@@ -763,19 +773,25 @@ export default class RScreen {
     node.v++;
 
     var txt = node.txt;
-    node.txt = __nodeSubstr(node, 0, offset);
-    node.wcwidth = offset;
-    afterNode.txt = lib.wc.substr(txt, offset);
-    afterNode.wcwidth = lib.wc.strWidth(txt);
+    __setNodeText(node, __nodeSubstr(node, 0, offset));
+    __setNodeText(afterNode, lib.wc.substr(txt, offset));
 
     var nodes = [];
 
-    if (node.wcwidth) {
+    if (node.txt) {
       nodes.push(node);
     }
 
-    if (afterNode.wcwidth) {
-      nodes.push(afterNode);
+    if (afterNode.txt) {
+      if (node.attrs.wcNode && afterNode.txt === txt) {
+        nodes.push(__createRNode(' ', 1));
+        nodes.push(separator);
+      } else {
+        nodes.push(separator);
+        nodes.push(afterNode);
+      }
+    } else {
+      nodes.push(separator);
     }
 
     return nodes;
@@ -809,12 +825,12 @@ export default class RScreen {
     var cursorNode = this.rowsArray[this._cursorRowIdx].nodes[
       this._cursorNodeIdx
     ];
-    width = cursorNode.wcwidth;
+    width = cursorNode.wcw;
 
     if (this._cursorOffset < width - 1) {
       __setNodeText(
         cursorNode,
-        __nodeSubstr(cursorNode, 0, this._cursorOffset),
+        __nodeSubstr(cursorNode, 0, this._cursorOffset + 1),
       );
     }
 
@@ -837,7 +853,7 @@ export default class RScreen {
 
     var cursorNodeText = cursorNode.txt;
 
-    cursorRow.lineOverflow = false;
+    cursorRow.o = false;
 
     // No matter what, before this function exits the cursor column will have
     // moved this much.
@@ -848,7 +864,7 @@ export default class RScreen {
 
     // Reverse offset is the offset measured from the end of the string.
     // Zero implies that the cursor is at the end of the cursor node.
-    var reverseOffset = cursorNode.wcwidth - offset;
+    var reverseOffset = cursorNode.wcw - offset;
 
     if (reverseOffset < 0) {
       // A negative reverse offset means the cursor is positioned past the end
@@ -900,9 +916,9 @@ export default class RScreen {
 
     if (this.textAttributes.matchesNode(cursorNode)) {
       // The new text can be placed directly in the cursor node.
-      if (reverseOffset == 0) {
+      if (reverseOffset === 0) {
         __setNodeText(cursorNode, cursorNodeText + str);
-      } else if (offset == 0) {
+      } else if (offset === 0) {
         __setNodeText(cursorNode, str + cursorNodeText);
       } else {
         var s =
@@ -921,13 +937,13 @@ export default class RScreen {
     // beginning or end of the cursor node, then the adjacent node is also a
     // potential candidate.
 
-    if (offset == 0) {
+    if (offset === 0) {
       // At the beginning of the cursor node, the check the previous sibling.
       var previousSibling = cursorRow.nodes[this._cursorNodeIdx - 1];
       if (previousSibling && this.textAttributes.matchesNode(previousSibling)) {
         __setNodeText(previousSibling, previousSibling.txt + str);
         this._cursorNodeIdx = this._cursorNodeIdx - 1;
-        this._cursorOffset = previousSibling.wcwidth;
+        this._cursorOffset = previousSibling.wcw;
         return;
       }
 
@@ -937,13 +953,13 @@ export default class RScreen {
       return;
     }
 
-    if (reverseOffset == 0) {
+    if (reverseOffset === 0) {
       // At the end of the cursor node, the check the next sibling.
       var nextSibling = cursorRow.nodes[this._cursorNodeIdx + 1];
       if (nextSibling && this.textAttributes.matchesNode(nextSibling)) {
         __setNodeText(nextSibling, str + nextSibling.txt);
         this._cursorNodeIdx++;
-        this._cursorOffset = lib.wc.strWidth(str);
+        this._cursorOffset = wcwidth; //lib.wc.strWidth(str);
         return;
       }
 
@@ -952,16 +968,29 @@ export default class RScreen {
       this._cursorNodeIdx++;
       // We specifically need to include any missing whitespace here, since it's
       // going in a new node.
-      this._cursorOffset = newNode.wcwidth;
+      this._cursorOffset = newNode.wcw;
       return;
     }
 
     // Worst case, we're somewhere in the middle of the cursor node.  We'll
     // have to split it into two nodes and insert our new container in between.
-    var nodes = this._splitNode(cursorNode, offset);
     var newNode = this.textAttributes.createNode(str);
-    this._cursorNodeIdx++;
-    cursorRow.nodes.splice(this._cursorNodeIdx, 0, newNode, nodes[1]);
+    var nodes = this._insertNode(cursorNode, offset, newNode);
+    var nodesCount = nodes.length;
+    if (nodesCount === 1) {
+      cursorRow.nodes.splice(this._cursorNodeIdx, 1, nodes[0]);
+    } else if (nodesCount === 2) {
+      cursorRow.nodes.splice(this._cursorNodeIdx, 1, nodes[0], nodes[1]);
+    } else if (nodesCount === 3) {
+      cursorRow.nodes.splice(
+        this._cursorNodeIdx,
+        1,
+        nodes[0],
+        nodes[1],
+        nodes[2],
+      );
+      this._cursorNodeIdx++;
+    }
     this._cursorNodeIdx++;
     this._cursorOffset = 0;
   }
@@ -993,6 +1022,7 @@ export default class RScreen {
     var spliceIdx = this._cursorNodeIdx;
     var spliceDeleteCount = 0;
     var offset = this._cursorOffset;
+
     var len = cursorRowNode.nodes.length;
     var rv = count;
 
@@ -1002,9 +1032,13 @@ export default class RScreen {
         break;
       }
 
+      if (count === 0) {
+        break;
+      }
+
       var node = cursorRowNode.nodes[nodeIdx];
 
-      var startWidth = node.wcwidth;
+      var startWidth = node.wcw;
 
       if (offset > 0) {
         if (startWidth - offset === count) {
@@ -1043,6 +1077,12 @@ export default class RScreen {
 
       // last modification
       __setNodeText(node, __nodeSubstr(node, count));
+      // we didn't delete anything. replace with one char width
+      if (node.attrs.wcNode && startWidth === node.wcw) {
+        var spaceNode = __createRNode(' ', 1);
+        count -= 1;
+        cursorRowNode.nodes.splice(nodeIdx, 1, spaceNode);
+      }
       break;
     }
 
@@ -1066,9 +1106,9 @@ export default class RScreen {
       return rv;
     }
 
-    if (len >= this._cursorNodeIdx) {
+    if (len <= this._cursorNodeIdx) {
       this._cursorNodeIdx = len - 1;
-      this._cursorOffset = cursorRowNode.nodes[len - 1].wcwidth;
+      this._cursorOffset = cursorRowNode.nodes[len - 1].wcw;
       return rv;
     }
 
@@ -1083,10 +1123,7 @@ export default class RScreen {
       return row;
     }
 
-    while (
-      this.rowsArray[rowIdx - 1] &&
-      this.rowsArray[rowIdx - 1].lineOverflow
-    ) {
+    while (this.rowsArray[rowIdx - 1] && this.rowsArray[rowIdx - 1].o) {
       row = this.rowsArray[rowIdx - 1];
       rowIdx--;
     }
@@ -1144,5 +1181,4 @@ export default class RScreen {
 }
 
 RScreen.CursorState = hterm.Screen.CursorState;
-
 hterm.Screen = RScreen;

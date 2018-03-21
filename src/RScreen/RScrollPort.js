@@ -10,46 +10,52 @@ type StateType = {
   rows: RRowType[],
 };
 
-class RowsRenderer extends Component<*, StateType> {
-  _rowRefs = {};
+class RowsRenderer extends React.Component<*, StateType> {
+  _rowRefs = new Map();
 
   constructor() {
     super();
     this.state = { rows: [] };
   }
 
-  _renderRow = (row: RRowType) => {
-    // TODO: find a better way
-    var captureRef = ref => {
-      if (ref) {
-        this._rowRefs[row.number] = ref;
-      } else {
-        delete this._rowRefs[row.number];
-      }
-    };
-    return <RRow ref={captureRef} key={row.number} row={row} />;
-  };
-
   render() {
-    return this.state.rows.map(this._renderRow);
+    const rows = this.props.rows;
+    const len = rows.length;
+    const elements = new Array(len);
+    for (var i = 0; i < len; i++) {
+      var row = rows[i];
+      elements[i] = React.createElement(RRow, {
+        rowRefs: this._rowRefs,
+        key: row.key,
+        row: row,
+      });
+    }
+    return React.createElement('div', null, elements);
   }
 
   setRows(rows: RRowType[]) {
-    this.setState({ rows });
+    ReactDOM.unstable_deferredUpdates(() => {
+      this.setState({ rows: rows });
+    });
   }
 
   touchRow(row: RRowType) {
-    var rowRef = this._rowRefs[row.number];
+    var rowRef = this._rowRefs.get(row.n);
     if (rowRef) {
-      rowRef.forceUpdate();
+      ReactDOM.unstable_deferredUpdates(() => {
+        rowRef.forceUpdate();
+      });
     }
   }
 }
-var __screenSize = { height: window.innerHeight, width: window.innerWidth };
+
+let __screenSize = { height: window.innerHeight, width: window.innerWidth };
+let __pageYOffset = 0;
 
 // Pre calculate sizes to get better perfs
 function sizes() {
   __screenSize = { height: window.innerHeight, width: window.innerWidth };
+  __pageYOffset = window.pageYOffset;
 }
 window.onresize = sizes;
 
@@ -420,9 +426,13 @@ hterm.RScrollPort.prototype.decorate = function() {
   this.topFold_.style.cssText = 'display: block;';
   this.rowNodes_.appendChild(this.topFold_);
   this._renderDom = doc.createElement('div');
+  this._renderDom.id = 'hterm:renderer';
   this.rowNodes_.appendChild(this._renderDom);
 
-  this.renderRef = ReactDOM.render(<RowsRenderer />, this._renderDom);
+  this.renderRef = ReactDOM.render(
+    React.createElement(RowsRenderer),
+    this._renderDom,
+  );
 
   this.bottomFold_ = this.topFold_.cloneNode();
   this.bottomFold_.id = 'hterm:bottom-fold-for-row-selection';
@@ -758,9 +768,8 @@ hterm.RScrollPort.prototype.resize = function() {
 
   var self = this;
   this.publish('resize', { scrollPort: this }, function() {
-    // TODO: bring back
-    //self.scrollRowToBottom(self.rowProvider_.getRowCount());
-    //self.scheduleRedraw();
+    self.scrollRowToBottom(self.rowProvider_.getRowCount());
+    self.scheduleRedraw();
   });
 };
 
@@ -806,7 +815,7 @@ hterm.RScrollPort.prototype.syncRowNodesDimensions_ = function() {
   //this.rowNodes_.style.animation = 'none';
   //this.rowNodes_.style.backgroundColor = 'red';
   //this.rowNodes_.style.top = this.screen_.offsetTop - topFoldOffset + 'px';
-  if (window.pageYOffset <= 0) {
+  if (__pageYOffset <= 0) {
     this.rowNodes_.style.position = 'absolute';
     if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
       this.rowProvider_.cursorNode_.style.position = 'absolute';
@@ -861,7 +870,7 @@ hterm.RScrollPort.prototype.redraw_ = function() {
 
   this.syncScrollHeight();
 
-  if (window.pageYOffset >= 0) {
+  if (__pageYOffset >= 0) {
     var topRowIndex = this.getTopRowIndex();
     var bottomRowIndex = this.getBottomRowIndex(topRowIndex);
 
@@ -1126,7 +1135,7 @@ hterm.RScrollPort.prototype.scrollRowToTop = function(rowIndex) {
   var scrollMax = this.getScrollMax_();
   if (scrollTop > scrollMax) scrollTop = scrollMax;
 
-  if (window.pageYOffset === scrollTop) return;
+  if (__pageYOffset === scrollTop) return;
 
   this.screen_.scrollTo(0, scrollTop);
   this.scheduleRedraw();
@@ -1150,7 +1159,7 @@ hterm.RScrollPort.prototype.scrollRowToBottom = function(rowIndex) {
 
   if (scrollTop < 0) scrollTop = 0;
 
-  if (window.pageYOffset === scrollTop) {
+  if (__pageYOffset === scrollTop) {
     return;
   }
 
@@ -1164,7 +1173,7 @@ hterm.RScrollPort.prototype.scrollRowToBottom = function(rowIndex) {
  * returns the row that *should* be at the top.
  */
 hterm.RScrollPort.prototype.getTopRowIndex = function() {
-  return Math.round(window.pageYOffset / this.characterSize.height);
+  return Math.round(__pageYOffset / this.characterSize.height);
 };
 
 /**
@@ -1185,6 +1194,7 @@ hterm.RScrollPort.prototype.getBottomRowIndex = function(topRowIndex) {
  */
 hterm.RScrollPort.prototype.onScroll_ = function(e) {
   var screenSize = this.getScreenSize();
+  __pageYOffset = window.pageYOffset;
   if (
     screenSize.width != this.lastScreenWidth_ ||
     screenSize.height != this.lastScreenHeight_

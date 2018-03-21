@@ -6,6 +6,7 @@ import RNode from './RNode';
 
 type PropsType = {|
   row: RRowType,
+  rowRefs: Map<string, any>,
 |};
 
 export default class RRow extends Component<PropsType> {
@@ -14,8 +15,22 @@ export default class RRow extends Component<PropsType> {
   render() {
     this._v = this.props.row.v;
 
-    const nodes = this.props.row.nodes.map(n => <RNode key={n.key} node={n} />);
-    return <x-row>{nodes}</x-row>;
+    var nodes = this.props.row.nodes;
+    var len = nodes.length;
+    var elements = new Array(len);
+    for (var i = 0; i < len; i++) {
+      var n = nodes[i];
+      elements[i] = React.createElement(RNode, { key: n.key, node: n });
+    }
+    return React.createElement('x-row', null, elements);
+  }
+
+  componentDidMount() {
+    this.props.rowRefs.set(this.props.row.n, this);
+  }
+
+  componentWillUnmount() {
+    this.props.rowRefs.delete(this.props.row.n);
   }
 
   shouldComponentUpdate(nextProps: PropsType) {

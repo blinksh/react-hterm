@@ -11,31 +11,36 @@ export default class RNode extends Component<PropsType> {
   _v: number;
   render() {
     const { node } = this.props;
+    const attrs = node.attrs;
     this._v = node.v;
 
     // Fast path
-    if (node.attrs.isDefault) {
+    if (attrs.isDefault) {
       return node.txt;
     }
 
     let className = node.attrs.className;
     var style = null;
-    if (!(node.attrs.fc < 256)) {
+    if (!(attrs.fc < 256)) {
       style = style || {};
       style.color = node.attrs.fc;
     }
-    if (!(node.attrs.bc < 256)) {
+    if (!(attrs.bc < 256)) {
       style = style || {};
       style.backgroundColor = node.attrs.bc;
     }
-    if (!(node.attrs.uc < 256)) {
+    if (!(attrs.uc < 256)) {
       style = style || {};
       style.textDecorationColor = node.attrs.uc;
     }
 
-    if (!node.attrs.asciiNode) {
-      if (node.wcwidth < 1000) {
-        className += ' wc' + node.wcwidth.toString();
+    if (!attrs.asciiNode) {
+      if (node.wcw < 300) {
+        className += ' wc wc' + node.wcw;
+      } else {
+        className += ' wc';
+        style = style || {};
+        style.width = 'calc(var(--hterm-charsize-width) * ' + node.wcw + ')';
       }
     }
 

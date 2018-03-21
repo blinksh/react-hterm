@@ -16,14 +16,14 @@ export type RAttributesType = {|
 export type RNodeType = {|
   +key: string, // uniq in the row
   txt: string,
-  wcwidth: number,
+  wcw: number,
   v: number,
   +attrs: RAttributesType,
 |};
 
 export type RRowType = {|
-  number: string,
+  n: string, // Row number
   nodes: Array<RNodeType>,
   v: number,
-  lineOverflow: boolean,
+  o: boolean, // Line overflow
 |};
