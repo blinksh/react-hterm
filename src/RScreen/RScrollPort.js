@@ -1194,7 +1194,7 @@ hterm.RScrollPort.prototype.getBottomRowIndex = function(topRowIndex) {
  */
 hterm.RScrollPort.prototype.onScroll_ = function(e) {
   var screenSize = this.getScreenSize();
-  __pageYOffset = window.pageYOffset;
+  __pageYOffset = Math.max(window.pageYOffset, 0);
   if (
     screenSize.width != this.lastScreenWidth_ ||
     screenSize.height != this.lastScreenHeight_
