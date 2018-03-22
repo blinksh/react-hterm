@@ -78,10 +78,68 @@ function __rowText(row: RRowType): string {
   return rowText;
 }
 
+hterm.Terminal.prototype.scheduleSyncCursorPosition_ = function() {
+  if (this.timeouts_.syncCursor) {
+    return;
+  }
+
+  var self = this;
+  this.timeouts_.syncCursor = setTimeout(function() {
+    requestAnimationFrame(function() {
+      self.syncCursorPosition_();
+      self.timeouts_.syncCursor = 0;
+    });
+  }, 0);
+};
+
+hterm.Terminal.prototype.scheduleRedraw_ = function() {
+  if (this.timeouts_.redraw) {
+    return;
+  }
+
+  var self = this;
+  this.timeouts_.redraw = setTimeout(function() {
+    requestAnimationFrame(function() {
+      self.timeouts_.redraw = 0;
+      self.scrollPort_.redraw_();
+    });
+  }, 0);
+};
+
+hterm.Terminal.prototype.scheduleScrollDown_ = function() {
+  if (this.timeouts_.scrollDown) {
+    return;
+  }
+
+  var self = this;
+  this.timeouts_.scrollDown = setTimeout(function() {
+    self.timeouts_.scrollDown = 0;
+    requestAnimationFrame(function() {
+      self.scrollPort_.scrollToBottom();
+    });
+  }, 10);
+};
+
+hterm.Terminal.prototype.renumberRows_ = function(start, end, opt_screen) {
+  var screen = opt_screen || this.screen_;
+
+  //var offset = this.scrollbackRows_.length;
+  //var rows = screen.rowsArray;
+  //for (var i = start; i < end; i++) {
+  //var row = rows[i];
+  //var newN = offset + i;
+  //this.scrollPort_.renderRef.renumber(row, newN);
+  //rows[i].n = offset + i;
+  //}
+};
+
 hterm.Terminal.prototype.appendRows_ = function(count) {
+  var needScrollSync = false;
   if (this.scrollbackRows_.length > 4000) {
     this.scrollbackRows_.splice(0, 2000);
+    needScrollSync = true;
   }
+
   var cursorRow = this.screen_.rowsArray.length;
   var offset = this.scrollbackRows_.length + cursorRow;
   for (var i = 0; i < count; i++) {
@@ -99,6 +157,13 @@ hterm.Terminal.prototype.appendRows_ = function(count) {
     var ary = this.screen_.shiftRows(extraRows);
     Array.prototype.push.apply(this.scrollbackRows_, ary);
     if (this.scrollPort_.isScrolledEnd) this.scheduleScrollDown_();
+  }
+
+  if (needScrollSync) {
+    this.scrollPort_.syncScrollHeight();
+    //if (this.scrollPort_.isScrolledEnd) {
+    this.scheduleScrollDown_();
+    //}
   }
 
   if (cursorRow >= this.screen_.rowsArray.length)

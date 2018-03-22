@@ -39,6 +39,14 @@ class RowsRenderer extends React.Component<*, StateType> {
     });
   }
 
+  renumber(row, newN) {
+    var r = this._rowRefs.get(row.n);
+    if (r) {
+      this._rowRefs.delete(row.n);
+      this._rowRefs.set(newN, r);
+    }
+  }
+
   touchRow(row: RRowType) {
     var rowRef = this._rowRefs.get(row.n);
     if (rowRef) {
@@ -52,12 +60,10 @@ class RowsRenderer extends React.Component<*, StateType> {
 let __screenSize = { height: window.innerHeight, width: window.innerWidth };
 let __pageYOffset = 0;
 
-// Pre calculate sizes to get better perfs
-function sizes() {
+function __updateSizes() {
   __screenSize = { height: window.innerHeight, width: window.innerWidth };
   __pageYOffset = window.pageYOffset;
 }
-window.onresize = sizes;
 
 /**
  * A 'viewport' view of fixed-height rows with support for selection and
@@ -845,13 +851,15 @@ hterm.RScrollPort.prototype.syncScrollHeight = function() {
  * run only one redraw occurs.
  */
 hterm.RScrollPort.prototype.scheduleRedraw = function() {
-  if (this.timeouts_.redraw) return;
+  if (this.timeouts_.redraw) {
+    return;
+  }
 
   var self = this;
-  this.timeouts_.redraw = setTimeout(function() {
-    delete self.timeouts_.redraw;
+  this.timeouts_.redraw = requestAnimationFrame(function() {
+    self.timeouts_.redraw = 0;
     self.redraw_();
-  }, 0);
+  });
 };
 
 /**
@@ -1166,6 +1174,11 @@ hterm.RScrollPort.prototype.scrollRowToBottom = function(rowIndex) {
   this.screen_.scrollTo(0, scrollTop);
 };
 
+hterm.RScrollPort.prototype.scrollToBottom = function() {
+  this.syncScrollHeight();
+  this.scrollArea_.scrollIntoView(false);
+};
+
 /**
  * Return the row index of the first visible row.
  *
@@ -1360,6 +1373,7 @@ hterm.RScrollPort.prototype.onTouch_ = function(e) {
  * prefer to the bottom row to stay at the bottom.
  */
 hterm.RScrollPort.prototype.onResize_ = function(e) {
+  __updateSizes();
   // Re-measure, since onResize also happens for browser zoom changes.
   this.syncCharacterSize();
 };

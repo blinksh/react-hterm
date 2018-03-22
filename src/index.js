@@ -1,6 +1,7 @@
 import { hterm, lib } from './hterm_all';
 import RScrollPort from './RScreen/RScrollPort';
 import RScreen from './RScreen/RScreen';
+import _ from './RScreen/hterm_vs.patched';
 
 window.hterm = hterm;
 window.lib = lib;
