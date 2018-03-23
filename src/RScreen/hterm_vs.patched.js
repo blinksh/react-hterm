@@ -138,6 +138,10 @@ hterm.VT.prototype.dispatch = function(type, code, parseState) {
   handler._binded(parseState, code);
 };
 
+hterm.VT.ParseState.prototype.peekRemainingBuf = function() {
+  return this.buf.substring(this.pos);
+};
+
 hterm.VT.ParseState.prototype.peekChar = function() {
   return this.buf.charAt(this.pos);
 };
@@ -152,16 +156,15 @@ hterm.VT.ParseState.prototype.consumeChar = function() {
   return this.buf.charAt(this.pos++);
 };
 
-hterm.VT.prototype.parseUnknown_ = function(parseState) {
-  var self = this;
-
-  function print(str) {
-    if (!self.codingSystemUtf8_ && self[self.GL].GL)
-      str = self[self.GL].GL(str);
-
-    self.terminal.print(str);
+function __print(self: hterm.VT, str: string) {
+  if (!self.codingSystemUtf8_ && self[self.GL].GL) {
+    str = self[self.GL].GL(str);
   }
 
+  self.terminal.print(str);
+}
+
+hterm.VT.prototype.parseUnknown_ = function(parseState) {
   // Search for the next contiguous block of plain text.
   var buf = parseState.peekRemainingBuf();
   var nextControl = buf.search(this.cc1Pattern_);
@@ -175,12 +178,12 @@ hterm.VT.prototype.parseUnknown_ = function(parseState) {
 
   if (nextControl === -1) {
     // There are no control characters in this string.
-    print(buf);
+    __print(this, buf);
     parseState.reset();
     return;
   }
 
-  print(buf.substr(0, nextControl));
+  __print(this, buf.substr(0, nextControl));
   this.dispatch('CC1', buf.charAt(nextControl), parseState);
   parseState.advance(nextControl + 1);
 };

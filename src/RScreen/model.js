@@ -14,7 +14,7 @@ export type RAttributesType = {|
 |};
 
 export type RNodeType = {|
-  +key: string, // uniq in the row
+  key: number, // uniq in the row
   txt: string,
   wcw: number,
   v: number,
@@ -22,8 +22,9 @@ export type RNodeType = {|
 |};
 
 export type RRowType = {|
-  n: string, // Row number
-  nodes: Array<RNodeType>,
+  key: number, // uniq in the row
+  n: number, // Row number
+  nodes: RNodeType[],
   v: number,
   o: boolean, // Line overflow
 |};

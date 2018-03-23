@@ -14,7 +14,7 @@ var nodeIdx = 0;
 function node(text: string): RNodeType {
   return {
     v: 0,
-    key: (nodeIdx++).toString(),
+    key: nodeIdx++,
     txt: text,
     wcw: text.length,
     attrs: {
@@ -32,7 +32,7 @@ function node(text: string): RNodeType {
 function wcNode(text: string): RNodeType {
   return {
     v: 0,
-    key: (nodeIdx++).toString(),
+    key: nodeIdx++,
     txt: text,
     wcw: lib.wc.strWidth(text),
     attrs: {
@@ -49,7 +49,7 @@ function wcNode(text: string): RNodeType {
 
 function _createRowWithPlainText(text: string, num: number): RRowType {
   var row: RRowType = {
-    n: num.toString(),
+    n: num,
     nodes: [],
     v: 0,
     o: false,

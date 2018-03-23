@@ -25,8 +25,8 @@ function __touch(n: RRowType | RNodeType) {
   n.v = (n.v + 1) % 1000000;
 }
 
-function __genNodeKey(): string {
-  return (__nodeKey++ % 1000000).toString(32);
+function __genNodeKey(): number {
+  return __nodeKey++ % 1000000;
 }
 
 function __setNodeText(node: RNodeType, text: string) {
@@ -39,7 +39,7 @@ function __setNodeText(node: RNodeType, text: string) {
   __touch(node);
 }
 
-function __createRNode(text: string, wcwidth: number): RNodeType {
+function __createNode(text: string, wcwidth: number): RNodeType {
   return {
     v: 0,
     txt: text,
@@ -70,12 +70,12 @@ function __rowWidth(row: RRowType): number {
 }
 
 function __rowText(row: RRowType): string {
-  var rowText = '';
+  var text = '';
   for (var i = 0, len = row.nodes.length; i < len; i++) {
-    rowText += row.nodes[i].txt;
+    text += row.nodes[i].txt;
   }
 
-  return rowText;
+  return text;
 }
 
 hterm.Terminal.prototype.scheduleSyncCursorPosition_ = function() {
@@ -123,14 +123,13 @@ hterm.Terminal.prototype.scheduleScrollDown_ = function() {
 hterm.Terminal.prototype.renumberRows_ = function(start, end, opt_screen) {
   var screen = opt_screen || this.screen_;
 
-  //var offset = this.scrollbackRows_.length;
-  //var rows = screen.rowsArray;
-  //for (var i = start; i < end; i++) {
-  //var row = rows[i];
-  //var newN = offset + i;
-  //this.scrollPort_.renderRef.renumber(row, newN);
-  //rows[i].n = offset + i;
-  //}
+  var offset = this.scrollbackRows_.length;
+  var rows = screen.rowsArray;
+  for (var i = start; i < end; i++) {
+    var row = rows[i];
+    row.n = offset + i;
+    __touch(row);
+  }
 };
 
 hterm.Terminal.prototype.appendRows_ = function(count) {
@@ -144,10 +143,11 @@ hterm.Terminal.prototype.appendRows_ = function(count) {
   var offset = this.scrollbackRows_.length + cursorRow;
   for (var i = 0; i < count; i++) {
     var row: RRowType = {
+      key: __genNodeKey(),
       n: offset + i,
       o: false,
       v: 0,
-      nodes: [__createRNode('', 0)],
+      nodes: [__createNode('', 0)],
     };
     this.screen_.pushRow(row);
   }
@@ -172,8 +172,27 @@ hterm.Terminal.prototype.appendRows_ = function(count) {
   this.setAbsoluteCursorPosition(cursorRow, 0);
 };
 
+hterm.Terminal.prototype.moveRows_ = function(fromIndex, count, toIndex) {
+  var ary = this.screen_.removeRows(fromIndex, count);
+  this.screen_.insertRows(toIndex, ary);
+
+  var start, end;
+  if (fromIndex < toIndex) {
+    start = fromIndex;
+    end = toIndex + count;
+  } else {
+    start = toIndex;
+    end = fromIndex + count;
+  }
+
+  this.renumberRows_(start, end);
+  this.scrollPort_.scheduleInvalidate();
+};
+
 hterm.Terminal.prototype.eraseToRight = function(opt_count) {
-  if (this.screen_.cursorPosition.overflow) return;
+  if (this.screen_.cursorPosition.overflow) {
+    return;
+  }
 
   var maxCount = this.screenSize.width - this.screen_.cursorPosition.column;
   var count = opt_count ? Math.min(opt_count, maxCount) : maxCount;
@@ -187,13 +206,14 @@ hterm.Terminal.prototype.eraseToRight = function(opt_count) {
       this.screen_.deleteChars(count);
       this.clearCursorOverflow();
       __touch(cursorRow);
-      this.scrollPort_.renderRef.touchRow(cursorRow);
+      this.scrollPort_.renderRef.touch();
       return;
     }
   }
 
   var cursor = this.saveCursor();
   this.screen_.overwriteString(lib.f.getWhitespace(count), count);
+  this.scrollPort_.renderRef.touch();
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
 };
@@ -206,25 +226,19 @@ hterm.Terminal.prototype.eraseAbove = function() {
   for (var i = 0; i < cursor.row; i++) {
     this.setAbsoluteCursorPosition(i, 0);
     this.screen_.clearCursorRow();
-    var cursorRow = this.screen_.cursorRow();
-    if (cursorRow) {
-      this.scrollPort_.renderRef.touchRow(cursorRow);
-    }
   }
 
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
+  this.scrollPort_.renderRef.touch();
 };
 
 hterm.Terminal.prototype.eraseLine = function() {
   var cursor = this.saveCursor();
   this.screen_.clearCursorRow();
-  var cursorRow = this.screen_.cursorRow();
-  if (cursorRow) {
-    this.scrollPort_.renderRef.touchRow(cursorRow);
-  }
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
+  this.scrollPort_.renderRef.touch();
 };
 
 hterm.Terminal.prototype.clearHome = function(opt_screen) {
@@ -239,13 +253,10 @@ hterm.Terminal.prototype.clearHome = function(opt_screen) {
   for (var i = 0; i < bottom; i++) {
     screen.setCursorPosition(i, 0);
     screen.clearCursorRow();
-    var cursorRow = this.screen_.cursorRow();
-    if (cursorRow) {
-      this.scrollPort_.renderRef.touchRow(cursorRow);
-    }
   }
 
   screen.setCursorPosition(0, 0);
+  this.scrollPort_.renderRef.touch();
 };
 
 hterm.Terminal.prototype.eraseBelow = function() {
@@ -257,14 +268,11 @@ hterm.Terminal.prototype.eraseBelow = function() {
   for (var i = cursor.row + 1; i <= bottom; i++) {
     this.setAbsoluteCursorPosition(i, 0);
     this.screen_.clearCursorRow();
-    var cursorRow = this.screen_.cursorRow();
-    if (cursorRow) {
-      this.scrollPort_.renderRef.touchRow(cursorRow);
-    }
   }
 
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
+  this.scrollPort_.renderRef.touch();
 };
 
 hterm.Terminal.prototype.print = function(str) {
@@ -319,19 +327,16 @@ hterm.Terminal.prototype.print = function(str) {
     }
 
     this.screen_.maybeClipCurrentRow();
-
-    // Touch cursor row;
-    var cursorRow = this.screen_.cursorRow();
-    if (cursorRow) {
-      this.scrollPort_.renderRef.touchRow(cursorRow);
-    }
     startOffset += count;
   }
 
   this.scheduleSyncCursorPosition_();
 
-  if (this.scrollOnOutput_)
+  if (this.scrollOnOutput_) {
     this.scrollPort_.scrollRowToBottom(this.getRowCount());
+  }
+
+  this.scrollPort_.renderRef.touch();
 };
 
 var __cssStyleSheet = null;
@@ -496,21 +501,18 @@ var __invisible = 'invbl'; // invisible
 var __wc = 'wc'; // widechar
 
 for (var i = 0; i < 256; i++) {
-  const index = i.toString(16);
-
-  __c[i] = 'c' + index;
-  __bc[i] = 'bc' + index;
-  __uc[i] = 'uc' + index;
+  __c[i] = 'c' + i;
+  __bc[i] = 'bc' + i;
+  __uc[i] = 'uc' + i;
 }
 
 function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   var rows = [];
   for (var i = 0; i < 256; i++) {
-    var index = i.toString(16);
     var color = attrs.colorPalette[i];
-    rows.push('span.c' + index + ' { color: ' + color + ';}');
-    rows.push('span.bc' + index + ' { background: ' + color + ';}');
-    rows.push('span.uc' + index + ' { text-decoration-color: ' + color + ';}');
+    rows.push('span.c' + i + ' { color: ' + color + ';}');
+    rows.push('span.bc' + i + ' { background: ' + color + ';}');
+    rows.push('span.uc' + i + ' { text-decoration-color: ' + color + ';}');
   }
   rows.push('.u { text-decoration: underline;}');
   //solid: 'u1',
@@ -597,7 +599,7 @@ hterm.TextAttributes.prototype.matchesNode = function(
   // in the compares below.
   return (
     !(this.wcNode || attrs.wcNode) &&
-    !(this.tileData != null || attrs.tileData) &&
+    //!(this.tileData != null || attrs.tileData) &&
     this.className === attrs.className &&
     this.uriId === attrs.uriId
   );
@@ -773,7 +775,7 @@ export default class RScreen {
     var node = rowNode.nodes[0];
 
     if (!node) {
-      node = __createRNode('', 0);
+      node = __createNode('', 0);
       rowNode.nodes = [node];
       __touch(rowNode);
     }
@@ -849,7 +851,7 @@ export default class RScreen {
 
     if (afterNode.txt) {
       if (node.attrs.wcNode && afterNode.txt === txt) {
-        nodes.push(__createRNode(' ', 1));
+        nodes.push(__createNode(' ', 1));
         nodes.push(separator);
       } else {
         nodes.push(separator);
@@ -956,19 +958,18 @@ export default class RScreen {
       } else if (
         cursorNode.attrs.isDefault ||
         !(
-          cursorNode.attrs.underline ||
-          cursorNode.attrs.strikethrough ||
-          cursorNode.attrs.background ||
+          cursorNode.attrs.uc ||
+          cursorNode.attrs.bc ||
+          cursorNode.attrs.fc ||
           cursorNode.attrs.wcNode ||
-          !cursorNode.attrs.asciiNode ||
-          cursorNode.attrs.tileData != null
+          !cursorNode.attrs.asciiNode
         )
       ) {
         // Second best case, the current node is able to hold the whitespace.
         __setNodeText(cursorNode, (cursorNodeText += ws));
       } else {
         // Worst case, we have to create a new node to hold the whitespace.
-        var wsNode = __createRNode(ws, ws.length);
+        var wsNode = __createNode(ws, ws.length);
         cursorRow.nodes.splice(this._cursorNodeIdx, 0, wsNode);
         cursorNode = wsNode;
         this._cursorOffset = offset = -reverseOffset;
@@ -1144,7 +1145,7 @@ export default class RScreen {
       __setNodeText(node, __nodeSubstr(node, count));
       // we didn't delete anything. replace with one char width
       if (node.attrs.wcNode && startWidth === node.wcw) {
-        var spaceNode = __createRNode(' ', 1);
+        var spaceNode = __createNode(' ', 1);
         count -= 1;
         cursorRowNode.nodes.splice(nodeIdx, 1, spaceNode);
       }
@@ -1165,7 +1166,7 @@ export default class RScreen {
 
     len = cursorRowNode.nodes.length;
     if (len === 0) {
-      cursorRowNode.nodes = [__createRNode('', 0)];
+      cursorRowNode.nodes = [__createNode('', 0)];
       this._cursorNodeIdx = 0;
       this._cursorOffset = 0;
       return rv;
@@ -1203,7 +1204,7 @@ export default class RScreen {
     }
     while (row) {
       rowText += __rowText(row);
-      if (row.lineOverflow) {
+      if (row.o) {
         row = this.rowsArray[rowIdx];
         rowIdx++;
       } else {

@@ -6,54 +6,35 @@ import ReactDOM from 'react-dom';
 import type { RRowType } from './model';
 import RRow from './RRow';
 
-type StateType = {
-  rows: RRowType[],
-};
-
-class RowsRenderer extends React.Component<*, StateType> {
-  _rowRefs = new Map();
-
-  constructor() {
-    super();
-    this.state = { rows: [] };
-  }
+class RowsRenderer extends React.Component<void> {
+  _dirty = true;
+  _rows: RRowType[] = [];
 
   render() {
-    const rows = this.state.rows;
+    const rows = this._rows;
     const len = rows.length;
     const elements = new Array(len);
     for (var i = 0; i < len; i++) {
       var row = rows[i];
-      elements[i] = React.createElement(RRow, {
-        rowRefs: this._rowRefs,
-        key: row.n,
-        row: row,
-      });
+      elements[i] = React.createElement(RRow, { key: row.key, row: row });
     }
+    this._dirty = false;
     return React.createElement('div', null, elements);
   }
 
   setRows(rows: RRowType[]) {
+    this._rows = rows;
+    this.touch();
+  }
+
+  touch() {
+    if (this._dirty) {
+      return;
+    }
+    this._dirty = true;
     ReactDOM.unstable_deferredUpdates(() => {
-      this.setState({ rows: rows });
+      this.forceUpdate();
     });
-  }
-
-  renumber(row, newN) {
-    var r = this._rowRefs.get(row.n);
-    if (r) {
-      this._rowRefs.delete(row.n);
-      this._rowRefs.set(newN, r);
-    }
-  }
-
-  touchRow(row: RRowType) {
-    var rowRef = this._rowRefs.get(row.n);
-    if (rowRef) {
-      ReactDOM.unstable_deferredUpdates(() => {
-        rowRef.forceUpdate();
-      });
-    }
   }
 }
 
@@ -209,7 +190,9 @@ hterm.RScrollPort.Selection.prototype.findFirstChild = function(
 
     if (node.childNodes.length) {
       var rv = this.findFirstChild(node, childAry);
-      if (rv) return rv;
+      if (rv) {
+        return rv;
+      }
     }
 
     node = node.nextSibling;
@@ -654,7 +637,6 @@ hterm.RScrollPort.prototype.setRowProvider = function(rowProvider) {
  * changed.
  */
 hterm.RScrollPort.prototype.invalidate = function() {
-  this.previousRowNodeCache_ = null;
   var topRowIndex = this.getTopRowIndex();
   var bottomRowIndex = this.getBottomRowIndex(topRowIndex);
 
@@ -662,11 +644,13 @@ hterm.RScrollPort.prototype.invalidate = function() {
 };
 
 hterm.RScrollPort.prototype.scheduleInvalidate = function() {
-  if (this.timeouts_.invalidate) return;
+  if (this.timeouts_.invalidate) {
+    return;
+  }
 
   var self = this;
   this.timeouts_.invalidate = setTimeout(function() {
-    delete self.timeouts_.invalidate;
+    self.timeouts_.invalidate = 0;
     self.invalidate();
   }, 0);
 };
@@ -878,14 +862,14 @@ hterm.RScrollPort.prototype.redraw_ = function() {
 
   this.syncScrollHeight();
 
-  if (__pageYOffset >= 0) {
-    var topRowIndex = this.getTopRowIndex();
-    var bottomRowIndex = this.getBottomRowIndex(topRowIndex);
+  //if (__pageYOffset >= 0) {
+  var topRowIndex = this.getTopRowIndex();
+  var bottomRowIndex = this.getBottomRowIndex(topRowIndex);
 
-    this.drawTopFold_(topRowIndex);
-    this.drawBottomFold_(bottomRowIndex);
-    this.drawVisibleRows_(topRowIndex, bottomRowIndex);
-  }
+  this.drawTopFold_(topRowIndex);
+  this.drawBottomFold_(bottomRowIndex);
+  this.drawVisibleRows_(topRowIndex, bottomRowIndex);
+  //}
 
   this.syncRowNodesDimensions_();
 
