@@ -1,7 +1,7 @@
 // @flow
 import { hterm, lib } from '../hterm_all.js';
 
-import React, { Component } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import RRowList from './RRowList';
 

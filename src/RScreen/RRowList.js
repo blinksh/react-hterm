@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import type { RRowType } from './model';
 import RRow from './RRow';

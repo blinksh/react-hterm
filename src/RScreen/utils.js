@@ -1,6 +1,6 @@
 // @flow
 
-import type { RRowType, RNodeType, RAttributesType } from './model';
+import type { RRowType, RNodeType } from './model';
 import { lib } from '../hterm_all.js';
 
 var __nodeKey = 0;

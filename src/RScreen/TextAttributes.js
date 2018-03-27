@@ -1,5 +1,5 @@
 // @flow
-import type { RRowType, RNodeType, RAttributesType } from './model';
+import type { RNodeType, RAttributesType } from './model';
 import { hterm, lib } from '../hterm_all.js';
 import { genKey } from './utils';
 
@@ -186,7 +186,7 @@ var __u = {
 }; // underline
 var __i = 'i'; // italic
 var __invisible = 'invbl'; // invisible
-var __wc = 'wc'; // widechar
+var __wc = 'wcNode'; // widechar
 
 for (var i = 0; i < 256; i++) {
   __c[i] = 'c' + i;
@@ -211,7 +211,7 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   rows.push('span.b { font-weight: bold;}');
   rows.push('span.i { font-style: italic;}');
   rows.push('span.wc { display: inline-block; overflow-x:hidden; }');
-  for (var i = 0; i < 300; i++) {
+  for (i = 0; i < 300; i++) {
     rows.push(
       'span.wc' +
         i +
@@ -255,6 +255,10 @@ function __generateClassName(attrs: hterm.TextAttributes): string {
   }
   if (attrs.invisible) {
     result.push(__invisible);
+  }
+
+  if (attrs.wcNode) {
+    result.push(__wc);
   }
 
   if (result.length) {

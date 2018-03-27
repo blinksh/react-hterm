@@ -13,23 +13,6 @@ import { createNode } from './TextAttributes';
 
 import { hterm, lib } from '../hterm_all.js';
 
-//cursorRowIdx_: number;
-//cursorNodeIdx_: number;
-//cursorOffset_: number;
-
-//constructor(columnCount: number = 80) {
-//this.columnCount_ = columnCount;
-//this.cursorRowIdx_ = 0;
-//this.cursorNodeIdx_ = 0;
-//this.cursorOffset_ = 0;
-
-//this.wordBreakMatchLeft = null;
-//this.wordBreakMatchRight = null;
-//this.wordBreakMatchMiddle = null;
-
-//this.textAttributes = new hterm.TextAttributes(window.document);
-//}
-
 function __insertNode(
   node: RNodeType,
   offset: number,

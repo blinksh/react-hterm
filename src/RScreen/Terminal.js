@@ -1,6 +1,6 @@
 // @flow
 
-import type { RRowType, RNodeType, RAttributesType } from './model';
+import type { RRowType } from './model';
 
 import { hterm, lib } from '../hterm_all.js';
 import { touch, rowWidth, genKey } from './utils';
