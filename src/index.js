@@ -1,12 +1,15 @@
+// @flow
+
 import { hterm, lib } from './hterm_all';
-import RScrollPort from './RScreen/RScrollPort';
-import RScreen from './RScreen/RScreen';
-import _ from './RScreen/hterm_vs.patched';
+
+require('./RScreen/hterm_vs.patched');
+require('./RScreen/ScrollPort');
+require('./RScreen/Screen');
+require('./RScreen/Terminal');
 
 window.hterm = hterm;
 window.lib = lib;
 
-/*
 // If you are a cross-browser web app and want in-memory storage only.
 hterm.defaultStorage = new lib.Storage.Memory();
 
@@ -54,5 +57,3 @@ setInterval(function() {
     r++;
   }
 }, 1);
-
-*/

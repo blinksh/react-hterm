@@ -1,12 +1,13 @@
 // @flow
 
-import RScreen from './RScreen';
-import { lib } from '../hterm_all';
+import { lib, hterm } from '../hterm_all';
 import type { RNodeType, RRowType } from './model';
+require('./Screen');
 
-let _screen = new RScreen();
+let _screen: hterm.Screen = new hterm.Screen();
+
 beforeEach(() => {
-  _screen = new RScreen();
+  _screen = new hterm.Screen();
   _screen.setColumnCount(80);
 });
 
@@ -50,6 +51,7 @@ function wcNode(text: string): RNodeType {
 function _createRowWithPlainText(text: string, num: number): RRowType {
   var row: RRowType = {
     n: num,
+    key: num,
     nodes: [],
     v: 0,
     o: false,
@@ -143,81 +145,81 @@ test('cursor-movement', () => {
   }
 
   _screen.setCursorPosition(0, 0);
-  expect(_screen._cursorRowIdx).toEqual(0);
-  expect(_screen._cursorNodeIdx).toEqual(0);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorRowIdx_).toEqual(0);
+  expect(_screen.cursorNodeIdx_).toEqual(0);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.setCursorPosition(1, 0);
-  expect(_screen._cursorRowIdx).toEqual(1);
-  expect(_screen._cursorNodeIdx).toEqual(0);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorRowIdx_).toEqual(1);
+  expect(_screen.cursorNodeIdx_).toEqual(0);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.setCursorPosition(1, 10);
-  expect(_screen._cursorRowIdx).toEqual(1);
-  expect(_screen._cursorNodeIdx).toEqual(0);
-  expect(_screen._cursorOffset).toEqual(10);
+  expect(_screen.cursorRowIdx_).toEqual(1);
+  expect(_screen.cursorNodeIdx_).toEqual(0);
+  expect(_screen.cursorOffset_).toEqual(10);
 
   _screen.setCursorPosition(1, 5);
-  expect(_screen._cursorRowIdx).toEqual(1);
-  expect(_screen._cursorNodeIdx).toEqual(0);
-  expect(_screen._cursorOffset).toEqual(5);
+  expect(_screen.cursorRowIdx_).toEqual(1);
+  expect(_screen.cursorNodeIdx_).toEqual(0);
+  expect(_screen.cursorOffset_).toEqual(5);
 
   _screen.setCursorPosition(1, 10);
-  expect(_screen._cursorRowIdx).toEqual(1);
-  expect(_screen._cursorNodeIdx).toEqual(0);
-  expect(_screen._cursorOffset).toEqual(10);
+  expect(_screen.cursorRowIdx_).toEqual(1);
+  expect(_screen.cursorNodeIdx_).toEqual(0);
+  expect(_screen.cursorOffset_).toEqual(10);
 
   ary[2].nodes = [node('01'), node('23'), node('45'), node('67'), node('89')];
 
   _screen.setCursorPosition(2, 0);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(0);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(0);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.setCursorPosition(2, 2);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(1);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(1);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.setCursorPosition(2, 3);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(1);
-  expect(_screen._cursorOffset).toEqual(1);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(1);
+  expect(_screen.cursorOffset_).toEqual(1);
 
   _screen.setCursorPosition(2, 4);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(2);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(2);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.setCursorPosition(2, 5);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(2);
-  expect(_screen._cursorOffset).toEqual(1);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(2);
+  expect(_screen.cursorOffset_).toEqual(1);
 
   _screen.setCursorPosition(2, 6);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(3);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(3);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.setCursorPosition(2, 7);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(3);
-  expect(_screen._cursorOffset).toEqual(1);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(3);
+  expect(_screen.cursorOffset_).toEqual(1);
 
   _screen.setCursorPosition(2, 8);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(4);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(4);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.setCursorPosition(2, 9);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(4);
-  expect(_screen._cursorOffset).toEqual(1);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(4);
+  expect(_screen.cursorOffset_).toEqual(1);
 
   _screen.setCursorPosition(2, 18);
-  expect(_screen._cursorRowIdx).toEqual(2);
-  expect(_screen._cursorNodeIdx).toEqual(4);
-  expect(_screen._cursorOffset).toEqual(10);
+  expect(_screen.cursorRowIdx_).toEqual(2);
+  expect(_screen.cursorNodeIdx_).toEqual(4);
+  expect(_screen.cursorOffset_).toEqual(10);
 });
 
 test('delete-chars', () => {
@@ -243,24 +245,24 @@ test('delete-chars', () => {
 
   _screen.setCursorPosition(1, 2);
 
-  expect(_screen._cursorNodeIdx).toEqual(1);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorNodeIdx_).toEqual(1);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   _screen.deleteChars(2);
 
-  expect(_screen._cursorNodeIdx).toEqual(1);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorNodeIdx_).toEqual(1);
+  expect(_screen.cursorOffset_).toEqual(0);
 
   expect(wcRow.nodes[0].txt).toEqual('\u4E2D');
   expect(wcRow.nodes[1].txt).toEqual('\u5B57');
   expect(wcRow.nodes[2].txt).toEqual('\u4E32');
-  expect(_screen._cursorNodeIdx).toEqual(1);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorNodeIdx_).toEqual(1);
+  expect(_screen.cursorOffset_).toEqual(0);
   expect(wcRow.nodes.length).toEqual(3);
 
   _screen.setCursorPosition(1, 0);
-  expect(_screen._cursorNodeIdx).toEqual(0);
-  expect(_screen._cursorOffset).toEqual(0);
+  expect(_screen.cursorNodeIdx_).toEqual(0);
+  expect(_screen.cursorOffset_).toEqual(0);
   _screen.deleteChars(6);
   expect(wcRow.nodes.length).toEqual(1);
   expect(wcRow.nodes[0].txt).toEqual('');
@@ -320,8 +322,8 @@ test('wide-to-narrow-char-end', () => {
   expect(row.nodes.length).toEqual(3);
 
   _screen.setCursorPosition(0, 3);
-  expect(_screen._cursorNodeIdx).toEqual(1);
-  expect(_screen._cursorOffset).toEqual(1);
+  expect(_screen.cursorNodeIdx_).toEqual(1);
+  expect(_screen.cursorOffset_).toEqual(1);
 
   _screen.insertString('x', 1);
 
