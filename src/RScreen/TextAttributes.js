@@ -76,6 +76,24 @@ hterm.TextAttributes.prototype.createNode = function(
       attrs.uriId = this.uriId;
     }
     attrs.className = this.className;
+    if (
+      typeof this.foreground !== 'number' &&
+      this.foreground !== this.DEFAULT_COLOR
+    ) {
+      attrs.fc = this.foreground;
+    }
+    if (
+      typeof this.background !== 'number' &&
+      this.background !== this.DEFAULT_COLOR
+    ) {
+      attrs.bc = this.background;
+    }
+    if (
+      typeof this.underlineColor !== 'number' &&
+      this.underlineColor !== this.DEFAULT_COLOR
+    ) {
+      attrs.uc = this.underlineColor;
+    }
 
     const attrsHash = __attrsHash(attrs);
     var cachedAttrs = __attrsMap.get(attrsHash);
@@ -125,18 +143,18 @@ hterm.TextAttributes.prototype.reset = function() {
   this.className = __defaultClassName;
 };
 
-hterm.TextAttributes.prototype.syncColors = function() {
-  function getBrightIndex(i) {
-    if (i < 8) {
-      // If the color is from the lower half of the ANSI 16, add 8.
-      return i + 8;
-    }
-
-    // If it's not from the 16 color palette, ignore bold requests.  This
-    // matches the behavior of gnome-terminal.
-    return i;
+function __getBrightIndex(i) {
+  if (i < 8) {
+    // If the color is from the lower half of the ANSI 16, add 8.
+    return i + 8;
   }
 
+  // If it's not from the 16 color palette, ignore bold requests.  This
+  // matches the behavior of gnome-terminal.
+  return i;
+}
+
+hterm.TextAttributes.prototype.syncColors = function() {
   var foregroundSource = this.foregroundSource;
   var backgroundSource = this.backgroundSource;
   var defaultForeground = this.DEFAULT_COLOR;
@@ -152,7 +170,7 @@ hterm.TextAttributes.prototype.syncColors = function() {
 
   if (this.enableBoldAsBright && this.bold) {
     if (Number.isInteger(foregroundSource)) {
-      foregroundSource = getBrightIndex(foregroundSource);
+      foregroundSource = __getBrightIndex(foregroundSource);
     }
   }
 
@@ -250,13 +268,13 @@ var __classNameMemory = new Map();
 function __generateClassName(attrs: hterm.TextAttributes): string {
   var result = [];
 
-  if (typeof attrs.foreground === 'number' && attrs.foreground < 256) {
+  if (typeof attrs.foreground === 'number') {
     result.push(__c[attrs.foreground]);
   }
-  if (typeof attrs.background === 'number' && attrs.background < 256) {
+  if (typeof attrs.background === 'number') {
     result.push(__bc[attrs.background]);
   }
-  if (typeof attrs.underlineColor === 'number' && attrs.underlineColor < 256) {
+  if (typeof attrs.underlineColor === 'number') {
     result.push(__uc[attrs.underlineColor]);
   }
 
