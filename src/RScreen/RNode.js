@@ -44,7 +44,7 @@ export default class RNode extends Component<PropsType> {
       }
     }
 
-    var props = {};
+    let props = {};
     if (className) {
       props.className = className;
     }

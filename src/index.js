@@ -10,9 +10,9 @@ require('./RScreen/Terminal');
 window.hterm = hterm;
 window.lib = lib;
 
+/*
 // If you are a cross-browser web app and want in-memory storage only.
 hterm.defaultStorage = new lib.Storage.Memory();
-
 const t = new hterm.Terminal();
 
 t.onTerminalReady = function() {
@@ -57,3 +57,4 @@ setInterval(function() {
     r++;
   }
 }, 1);
+*/

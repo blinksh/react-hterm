@@ -279,6 +279,7 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
     } else {
       // Worst case, we have to create a new node to hold the whitespace.
       var wsNode = createNode(ws, ws.length);
+      this.cursorNodeIdx_++;
       cursorRow.nodes.splice(this.cursorNodeIdx_, 0, wsNode);
       cursorNode = wsNode;
       this.cursorOffset_ = offset = -reverseOffset;
@@ -495,7 +496,7 @@ hterm.Screen.prototype.deleteChars = function(count: number) {
   return rv;
 };
 
-hterm.Screen.prototype._getLineStartRow = function(row: RRowType): RRowType {
+hterm.Screen.prototype.getLineStartRow_ = function(row: RRowType): RRowType {
   var rowIdx = this.rowsArray.indexOf(row);
   if (rowIdx <= 0) {
     return row;
@@ -508,7 +509,7 @@ hterm.Screen.prototype._getLineStartRow = function(row: RRowType): RRowType {
   return row;
 };
 
-hterm.Screen.prototype._getLineText = function(row: RRowType): string {
+hterm.Screen.prototype.getLineText_ = function(row: RRowType): string {
   var result = '';
   var rowIdx = this.rowsArray.indexOf(row);
   if (rowIdx < 0) {

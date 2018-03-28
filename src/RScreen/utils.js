@@ -15,10 +15,10 @@ export function genKey(): number {
 
 export function setNodeText(node: RNodeType, text: string) {
   node.txt = text;
-  if (node.attrs.wcNode) {
-    node.wcw = lib.wc.strWidth(text);
-  } else {
+  if (node.attrs.asciiNode) {
     node.wcw = text.length;
+  } else {
+    node.wcw = lib.wc.strWidth(text);
   }
   touch(node);
 }
@@ -28,10 +28,10 @@ export function nodeSubstr(
   start: number,
   width: number | void,
 ) {
-  if (node.attrs.wcNode) {
-    return lib.wc.substr(node.txt, start, width);
+  if (node.attrs.asciiNode) {
+    return node.txt.substr(start, width);
   }
-  return node.txt.substr(start, width);
+  return lib.wc.substr(node.txt, start, width);
 }
 
 export function rowWidth(row: RRowType): number {
