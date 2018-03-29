@@ -188,6 +188,77 @@ hterm.VT.prototype.parseUnknown_ = function(parseState) {
   parseState.advance(nextControl + 1);
 };
 
+/**
+ * Interpret a string of characters, displaying the results on the associated
+ * terminal object.
+ *
+ * The buffer will be decoded according to the 'receive-encoding' preference.
+ */
+var __buffQueue = [];
+var __busyQ = false;
+var __bindedInterpertPart = null;
+
+hterm.VT.prototype.interpretPart = function() {
+  if (__busyQ) {
+    return;
+  }
+  __busyQ = true;
+  var startTime = performance.now();
+  var timeLimit = startTime + 8; // 10 ms for processing
+
+  if (this.parseState_.isComplete()) {
+    var buf = __buffQueue.pop();
+    if (!buf) {
+      __busyQ = false;
+      return;
+    }
+    this.parseState_.resetBuf(buf);
+  }
+
+  while (!this.parseState_.isComplete()) {
+    var now = performance.now();
+    if (now > timeLimit) {
+      if (__bindedInterpertPart == null) {
+        __bindedInterpertPart = this.interpretPart.bind(this);
+      }
+      requestAnimationFrame(__bindedInterpertPart);
+      __busyQ = false;
+      return;
+    }
+
+    var func = this.parseState_.func;
+    var pos = this.parseState_.pos;
+    var buf = this.parseState_.buf;
+
+    this.parseState_.func.call(this, this.parseState_);
+
+    if (
+      this.parseState_.func == func &&
+      this.parseState_.pos == pos &&
+      this.parseState_.buf == buf
+    ) {
+      throw 'Parser did not alter the state!';
+    }
+  }
+
+  __busyQ = false;
+
+  if (__buffQueue.length === 0) {
+    return;
+  }
+
+  if (__bindedInterpertPart == null) {
+    __bindedInterpertPart = this.interpretPart.bind(this);
+  }
+  requestAnimationFrame(__bindedInterpertPart);
+};
+
+//hterm.VT.prototype.interpret = function(buf) {
+//var b = this.decode(buf);
+//__buffQueue.push(b);
+//this.interpretPart();
+//};
+
 var _VTMaps: Map<string, Map<string, Function>> = new Map();
 
 ['CC1', 'ESC', 'CSI', 'OSC', 'VT52'].forEach(type => {

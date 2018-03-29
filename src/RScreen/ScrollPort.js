@@ -194,9 +194,12 @@ hterm.ScrollPort.prototype.decorate = function() {
     'display: block;' +
     'position: fixed;' +
     'top: 0;' +
-    'left: 0;' +
-    'right: 0;' +
+    //'left: 0;' +
+    //'right: 0;' +
     'bottom: 0;' +
+    'isolation: isolate;' +
+    'backgroundColor: inherit;' +
+    'contain: strict;' +
     'overflow: hidden;' +
     '-webkit-user-select: text;' +
     '-moz-user-select: text;';
@@ -243,7 +246,7 @@ hterm.ScrollPort.prototype.decorate = function() {
   // out of whack.
   this.scrollArea_ = doc.createElement('div');
   this.scrollArea_.id = 'hterm:scrollarea';
-  this.scrollArea_.style.cssText = 'visibility: hidden';
+  this.scrollArea_.style.cssText = 'width:0;height:0;';
   this.screen_.appendChild(this.scrollArea_);
 
   // This svg element is used to detect when the browser is zoomed.  It must be
@@ -279,8 +282,30 @@ hterm.ScrollPort.prototype.decorate = function() {
     this.handlePasteTargetTextInput_.bind(this),
   );
 
+  this.scrollToBottom = __throttle(this.scrollToBottom.bind(this), 50);
+
   this.resize();
 };
+
+function __throttle(callback, limit) {
+  var wait = false;
+  var tail = false;
+  return function() {
+    if (!wait) {
+      callback();
+      wait = true;
+      setTimeout(function() {
+        wait = false;
+        if (tail) {
+          tail = false;
+          callback();
+        }
+      }, limit);
+    } else {
+      tail = true;
+    }
+  };
+}
 
 hterm.ScrollPort.prototype.focus = function() {
   //this.iframe_.focus();
@@ -322,6 +347,8 @@ hterm.ScrollPort.prototype.scheduleInvalidate = function() {
   }, 0);
 };
 
+var __nodesPositionStyle = 'absolute';
+
 hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   var screenSize = this.getScreenSize();
 
@@ -344,29 +371,20 @@ hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   this.visibleRowTopMargin = 0;
   this.visibleRowBottomMargin = screenSize.height - visibleRowsHeight;
 
-  //this.topFold_.style.marginBottom = this.visibleRowTopMargin + 'px';
-
-  //var topFoldOffset = 0;
-  //var node = this.topFold_.previousSibling;
-  //while (node) {
-  //topFoldOffset += hterm.getClientHeight(node);
-  //node = node.previousSibling;
-  //  }
-
-  // Set the dimensions of the visible rows container.
-  //this.rowNodes_.style.width = screenSize.width + 'px';
-  //this.rowNodes_.style.height = visibleRowsHeight + topFoldOffset + 'px';
-  //this.rowNodes_.style.left = this.screen_.offsetLeft + 'px';
-  //this.rowNodes_.style.transform = 'translate(0, ' + window.pageYOffset + 'px)';
-  //this.rowNodes_.style.animation = 'none';
-  //this.rowNodes_.style.backgroundColor = 'red';
-  //this.rowNodes_.style.top = this.screen_.offsetTop - topFoldOffset + 'px';
   if (__pageYOffset <= 0) {
+    if (__nodesPositionStyle === 'absolute') {
+      return;
+    }
+    __nodesPositionStyle = 'absolute';
     this.rowNodes_.style.position = 'absolute';
     if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
       this.rowProvider_.cursorNode_.style.position = 'absolute';
     }
   } else {
+    if (__nodesPositionStyle === 'fixed') {
+      return;
+    }
+    __nodesPositionStyle = 'fixed';
     this.rowNodes_.style.position = 'fixed';
     if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
       this.rowProvider_.cursorNode_.style.position = 'fixed';
@@ -374,14 +392,22 @@ hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   }
 };
 
+var __prevHeight = 0;
 hterm.ScrollPort.prototype.syncScrollHeight = function() {
   // Resize the scroll area to appear as though it contains every row.
   this.lastRowCount_ = this.rowProvider_.getRowCount();
-  this.scrollArea_.style.height =
+  var height =
     this.characterSize.height * this.lastRowCount_ +
     this.visibleRowTopMargin +
-    this.visibleRowBottomMargin +
-    'px';
+    this.visibleRowBottomMargin;
+
+  if (__prevHeight === height) {
+    return;
+  }
+
+  __prevHeight = height;
+
+  this.scrollArea_.style.paddingBottom = height + 'px';
 };
 
 hterm.ScrollPort.prototype.scheduleRedraw = function() {
@@ -499,7 +525,8 @@ hterm.ScrollPort.prototype.scrollRowToBottom = function(rowIndex) {
 
 hterm.ScrollPort.prototype.scrollToBottom = function() {
   this.syncScrollHeight();
-  this.scrollArea_.scrollIntoView(false);
+  this.screen_.scrollTo(0, __prevHeight - __screenSize.height);
+  //this.scrollArea_.scrollIntoView(false);
 };
 
 hterm.ScrollPort.prototype.getTopRowIndex = function() {

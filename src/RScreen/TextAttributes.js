@@ -32,6 +32,16 @@ function __attrsHash(attrs: RAttributesType) {
 
 const __attrsMap: Map<string, RAttributesType> = new Map();
 
+export function createDefaultNode(text: string, wcwidth: number): RNodeType {
+  return {
+    v: 0,
+    txt: text,
+    wcw: wcwidth,
+    key: genKey(),
+    attrs: __defaultAttrs,
+  };
+}
+
 export function createNode(text: string, wcwidth: number): RNodeType {
   return {
     v: 0,
