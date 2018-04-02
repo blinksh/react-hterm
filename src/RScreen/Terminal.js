@@ -95,6 +95,18 @@ hterm.Terminal.prototype.decorate = function(div) {
     '}';
   this.document_.head.appendChild(style);
 
+  this.cursorOverlayNode_ = this.document_.createElement('div');
+  this.cursorOverlayNode_.id = 'hterm:terminal-overlay-cursor';
+  this.cursorOverlayNode_.style.cssText =
+    'position: absolute;' +
+    'left: 0;' +
+    'top: 0;' +
+    'bottom: 0;' +
+    'right: 0;' +
+    'pointer-events: none;';
+
+  this.document_.body.appendChild(this.cursorOverlayNode_);
+
   this.cursorNode_ = this.document_.createElement('div');
   this.cursorNode_.id = 'hterm:terminal-cursor';
   this.cursorNode_.className = 'cursor-node';
@@ -112,7 +124,7 @@ hterm.Terminal.prototype.decorate = function(div) {
   this.setCursorBlink(!!this.prefs_.get('cursor-blink'));
   this.restyleCursor_();
 
-  this.document_.body.appendChild(this.cursorNode_);
+  this.cursorOverlayNode_.appendChild(this.cursorNode_);
 
   // When 'enableMouseDragScroll' is off we reposition this element directly
   // under the mouse cursor after a click.  This makes Chrome associate
@@ -151,6 +163,66 @@ hterm.Terminal.prototype.decorate = function(div) {
 
   this.scrollPort_.focus();
   this.scrollPort_.scheduleRedraw();
+};
+
+hterm.Terminal.prototype.syncCursorPosition_ = function() {
+  var topRowIndex = this.scrollPort_.getTopRowIndex();
+  var bottomRowIndex = this.scrollPort_.getBottomRowIndex(topRowIndex);
+  var cursorRowIndex =
+    this.scrollbackRows_.length + this.screen_.cursorPosition.row;
+
+  if (cursorRowIndex > bottomRowIndex) {
+    // Cursor is scrolled off screen, move it outside of the visible area.
+    this.setCssCursorPos({ row: -1, col: this.screen_.cursorPosition.column });
+    return;
+  }
+
+  if (this.options_.cursorVisible && this.cursorNode_.style.display == 'none') {
+    // Re-display the terminal cursor if it was hidden by the mouse cursor.
+    this.cursorNode_.style.display = '';
+  }
+
+  this.setCssCursorPos({
+    row: cursorRowIndex - topRowIndex + this.scrollPort_.visibleRowTopMargin,
+    col: this.screen_.cursorPosition.column,
+  });
+
+  // Update the caret for a11y purposes.
+  var selection = this.document_.getSelection();
+  if (selection && selection.isCollapsed)
+    this.screen_.syncSelectionCaret(selection);
+};
+
+var __prevCursorPos = { row: -1, col: -1 };
+
+hterm.Terminal.prototype.setCssCursorPos = function(pos: {
+  row: number,
+  col: number,
+}) {
+  if (__prevCursorPos.row === pos.row && __prevCursorPos.col === pos.col) {
+    return;
+  }
+
+  if (__prevCursorPos.row === -1 && pos.row === -1) {
+    return;
+  }
+
+  if (__prevCursorPos.row !== pos.row) {
+    this.setCursorCssVar('cursor-offset-row', pos.row + '');
+  }
+
+  if (__prevCursorPos.col !== pos.col) {
+    this.setCursorCssVar('cursor-offset-col', pos.col + '');
+  }
+  __prevCursorPos = pos;
+};
+
+hterm.Terminal.prototype.setCursorCssVar = function(
+  name,
+  value,
+  opt_prefix = '--hterm-',
+) {
+  this.cursorOverlayNode_.style.setProperty(`${opt_prefix}${name}`, value);
 };
 
 hterm.Terminal.prototype.scheduleSyncCursorPosition_ = function() {
@@ -207,7 +279,7 @@ hterm.Terminal.prototype.renumberRows_ = function(start, end, opt_screen) {
 
 hterm.Terminal.prototype.appendRows_ = function(count) {
   var needScrollSync = false;
-  if (this.scrollbackRows_.length > 4000) {
+  if (this.scrollbackRows_.length > 6000) {
     this.scrollbackRows_.splice(0, 2000);
     needScrollSync = true;
   }

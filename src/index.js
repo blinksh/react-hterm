@@ -1,7 +1,7 @@
 // @flow
 
 import { hterm, lib } from './hterm_all';
-
+//require('./index.css');
 require('./RScreen/hterm_vs.patched');
 require('./RScreen/ScrollPort');
 require('./RScreen/Screen');
@@ -56,5 +56,4 @@ setInterval(function() {
     r++;
   }
 }, 1);
-
 */

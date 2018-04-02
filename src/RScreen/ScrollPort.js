@@ -4,14 +4,10 @@ import { hterm, lib } from '../hterm_all.js';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import RRowList from './RRowList';
+import Scroller from './scroller/Scroller';
 
 let __screenSize = { height: window.innerHeight, width: window.innerWidth };
 let __pageYOffset = 0;
-
-function __updateSizes() {
-  __screenSize = { height: window.innerHeight, width: window.innerWidth };
-  __pageYOffset = window.pageYOffset;
-}
 
 hterm.ScrollPort.Selection.prototype.sync = function() {
   var self = this;
@@ -127,10 +123,6 @@ hterm.ScrollPort.prototype.decorate = function() {
     '-webkit-user-select: none;' +
     '-moz-user-select: none;';
 
-  const metaCharset = doc.createElement('meta');
-  metaCharset.setAttribute('charset', 'utf-8');
-  doc.head.appendChild(metaCharset);
-
   var style = doc.createElement('style');
   style.textContent =
     'x-row {' +
@@ -155,15 +147,14 @@ hterm.ScrollPort.prototype.decorate = function() {
   // that doesn't make sense here, and might inadvertently mung or save input.
   // Some of these attributes are standard while others are browser specific,
   // but should be safely ignored by other browsers.
-  this.screen_ = window.document.body; // doc.createElement('x-screen');
+  this.screen_ = doc.createElement('x-screen');
   this.screen_.setAttribute('tabindex', '-1');
   this.screen_.style.cssText =
     'caret-color: transparent;' +
     'display: block;' +
     'font-family: monospace;' +
     'font-size: 15px;' +
-    'font-variant-ligatures: none;' +
-    'overflow-x: hidden;' +
+    'overflow: hidden;' +
     'white-space: pre;' +
     'width: 100%;' +
     'margin: 0px;' +
@@ -173,14 +164,15 @@ hterm.ScrollPort.prototype.decorate = function() {
     'cursor: var(--hterm-mouse-cursor-style);' +
     'outline: none !important';
 
-  //doc.body.appendChild(this.screen_);
+  doc.body.appendChild(this.screen_);
 
-  window.addEventListener('scroll', this.onScroll_.bind(this));
+  //window.addEventListener('scroll', this.onScroll_.bind(this));
   //window.addEventListener('wheel', this.onScrollWheel_.bind(this));
-  //this.screen_.addEventListener('touchstart', this.onTouch_.bind(this));
-  //this.screen_.addEventListener('touchmove', this.onTouch_.bind(this));
-  //this.screen_.addEventListener('touchend', this.onTouch_.bind(this));
-  //this.screen_.addEventListener('touchcancel', this.onTouch_.bind(this));
+  this.screen_.addEventListener('touchstart', this.on_touchstart_.bind(this));
+  this.screen_.addEventListener('touchmove', this.on_touchmove_.bind(this));
+  this.screen_.addEventListener('touchend', this.on_touchend_.bind(this));
+  this.screen_.addEventListener('touchcancel', this.on_touchcancel_.bind(this));
+
   this.screen_.addEventListener('copy', this.onCopy_.bind(this));
   this.screen_.addEventListener('paste', this.onPaste_.bind(this));
   this.screen_.addEventListener('drop', this.onDragAndDrop_.bind(this));
@@ -192,14 +184,14 @@ hterm.ScrollPort.prototype.decorate = function() {
   this.rowNodes_.id = 'hterm:row-nodes';
   this.rowNodes_.style.cssText =
     'display: block;' +
-    'position: fixed;' +
+    'position: absolute;' +
     'top: 0;' +
-    //'left: 0;' +
-    //'right: 0;' +
+    'left: 0;' +
+    'right: 0;' +
     'bottom: 0;' +
-    'isolation: isolate;' +
-    'backgroundColor: inherit;' +
     'contain: strict;' +
+    'isolation: isolate;' +
+    'background-color: inherit;' +
     'overflow: hidden;' +
     '-webkit-user-select: text;' +
     '-moz-user-select: text;';
@@ -244,10 +236,26 @@ hterm.ScrollPort.prototype.decorate = function() {
   // it in the selection when a user 'drag selects' upwards (drag the mouse to
   // select and scroll at the same time).  Without this, the selection gets
   // out of whack.
-  this.scrollArea_ = doc.createElement('div');
-  this.scrollArea_.id = 'hterm:scrollarea';
-  this.scrollArea_.style.cssText = 'width:0;height:0;';
-  this.screen_.appendChild(this.scrollArea_);
+  //this.scrollArea_ = doc.createElement('div');
+  //this.scrollArea_.id = 'hterm:scrollarea';
+  //this.scrollArea_.style.cssText = 'width:0;height:0;';
+  //this.screen_.appendChild(this.scrollArea_);
+  var self = this;
+  __screenSize = hterm.getClientSize(this.screen_);
+  this.scroller_ = new Scroller(
+    function render(left, top, zoom) {
+      __pageYOffset = top || 0;
+      self.onScroll_();
+    },
+    { scrollingX: false },
+  );
+
+  this.scroller_.setDimensions(
+    __screenSize.width,
+    __screenSize.height,
+    __screenSize.width,
+    __screenSize.height,
+  );
 
   // This svg element is used to detect when the browser is zoomed.  It must be
   // placed in the outermost document for currentScale to be correct.
@@ -282,9 +290,23 @@ hterm.ScrollPort.prototype.decorate = function() {
     this.handlePasteTargetTextInput_.bind(this),
   );
 
-  this.scrollToBottom = __throttle(this.scrollToBottom.bind(this), 50);
-
   this.resize();
+};
+
+hterm.ScrollPort.prototype.on_touchstart_ = function(e) {
+  this.scroller_.doTouchStart(e.touches, e.timeStamp);
+};
+
+hterm.ScrollPort.prototype.on_touchmove_ = function(e) {
+  this.scroller_.doTouchMove(e.touches, e.timeStamp, e.scale);
+};
+
+hterm.ScrollPort.prototype.on_touchend_ = function(e) {
+  this.scroller_.doTouchEnd(e.timeStamp);
+};
+
+hterm.ScrollPort.prototype.on_touchcancel_ = function(e) {
+  this.scroller_.doTouchEnd(e.timeStamp);
 };
 
 function __throttle(callback, limit) {
@@ -371,25 +393,25 @@ hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   this.visibleRowTopMargin = 0;
   this.visibleRowBottomMargin = screenSize.height - visibleRowsHeight;
 
-  if (__pageYOffset <= 0) {
-    if (__nodesPositionStyle === 'absolute') {
-      return;
-    }
-    __nodesPositionStyle = 'absolute';
-    this.rowNodes_.style.position = 'absolute';
-    if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
-      this.rowProvider_.cursorNode_.style.position = 'absolute';
-    }
-  } else {
-    if (__nodesPositionStyle === 'fixed') {
-      return;
-    }
-    __nodesPositionStyle = 'fixed';
-    this.rowNodes_.style.position = 'fixed';
-    if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
-      this.rowProvider_.cursorNode_.style.position = 'fixed';
-    }
-  }
+  //if (__pageYOffset <= 0) {
+  //if (__nodesPositionStyle === 'absolute') {
+  //return;
+  //}
+  //__nodesPositionStyle = 'absolute';
+  //this.rowNodes_.style.position = 'absolute';
+  //if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
+  //this.rowProvider_.cursorNode_.style.position = 'absolute';
+  //}
+  //} else {
+  //if (__nodesPositionStyle === 'fixed') {
+  //return;
+  //}
+  //__nodesPositionStyle = 'fixed';
+  //this.rowNodes_.style.position = 'fixed';
+  //if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
+  //this.rowProvider_.cursorNode_.style.position = 'fixed';
+  //}
+  //}
 };
 
 var __prevHeight = 0;
@@ -407,7 +429,7 @@ hterm.ScrollPort.prototype.syncScrollHeight = function() {
 
   __prevHeight = height;
 
-  this.scrollArea_.style.paddingBottom = height + 'px';
+  this.scroller_.setDimensions(null, null, null, __prevHeight);
 };
 
 hterm.ScrollPort.prototype.scheduleRedraw = function() {
@@ -479,7 +501,7 @@ hterm.ScrollPort.prototype.fetchRowNode_ = function(rowIndex) {
 
 hterm.ScrollPort.prototype.getScrollMax_ = function(e) {
   return (
-    hterm.getClientHeight(this.scrollArea_) +
+    __prevHeight +
     this.visibleRowTopMargin +
     this.visibleRowBottomMargin -
     __screenSize.height
@@ -499,7 +521,7 @@ hterm.ScrollPort.prototype.scrollRowToTop = function(rowIndex) {
 
   if (__pageYOffset === scrollTop) return;
 
-  this.screen_.scrollTo(0, scrollTop);
+  this.scroller_.scrollTo(0, scrollTop);
   this.scheduleRedraw();
 };
 
@@ -520,13 +542,12 @@ hterm.ScrollPort.prototype.scrollRowToBottom = function(rowIndex) {
     return;
   }
 
-  this.screen_.scrollTo(0, scrollTop);
+  this.scroller_.scrollTo(0, scrollTop);
 };
 
 hterm.ScrollPort.prototype.scrollToBottom = function() {
   this.syncScrollHeight();
-  this.screen_.scrollTo(0, __prevHeight - __screenSize.height);
-  //this.scrollArea_.scrollIntoView(false);
+  this.scroller_.scrollTo(0, __prevHeight - __screenSize.height, false);
 };
 
 hterm.ScrollPort.prototype.getTopRowIndex = function() {
@@ -535,7 +556,6 @@ hterm.ScrollPort.prototype.getTopRowIndex = function() {
 
 hterm.ScrollPort.prototype.onScroll_ = function(e) {
   var screenSize = this.getScreenSize();
-  __pageYOffset = Math.max(window.pageYOffset, 0);
   if (
     screenSize.width != this.lastScreenWidth_ ||
     screenSize.height != this.lastScreenHeight_
@@ -556,7 +576,9 @@ hterm.ScrollPort.prototype.onScroll_ = function(e) {
 hterm.ScrollPort.prototype.onScrollWheel = function(e) {};
 
 hterm.ScrollPort.prototype.onResize_ = function(e) {
-  __updateSizes();
+  __screenSize = hterm.getClientSize(this.screen_);
+  this.scroller_.setDimensions(__screenSize.width, __screenSize.height);
+  //__pageYOffset = this.scroller_.getValues().top;
   // Re-measure, since onResize also happens for browser zoom changes.
   this.syncCharacterSize();
 };
@@ -564,7 +586,9 @@ hterm.ScrollPort.prototype.onResize_ = function(e) {
 hterm.ScrollPort.prototype.onCopy_ = function(e) {
   this.onCopy(e);
 
-  if (e.defaultPrevented) return;
+  if (e.defaultPrevented) {
+    return;
+  }
 
   this.resetSelectBags_();
   this.selection.sync();

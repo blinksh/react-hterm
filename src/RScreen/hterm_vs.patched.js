@@ -195,69 +195,65 @@ hterm.VT.prototype.parseUnknown_ = function(parseState) {
  * The buffer will be decoded according to the 'receive-encoding' preference.
  */
 var __buffQueue = [];
-var __busyQ = false;
-var __bindedInterpertPart = null;
+var __currentParseState = null;
+var __busy = false;
+var __vt;
 
-hterm.VT.prototype.interpretPart = function() {
-  if (__busyQ) {
-    return;
-  }
-  __busyQ = true;
-  var startTime = performance.now();
-  var timeLimit = startTime + 8; // 10 ms for processing
-
-  if (this.parseState_.isComplete()) {
-    var buf = __buffQueue.pop();
-    if (!buf) {
-      __busyQ = false;
+function __interpret(startTime: number) {
+  __busy = true;
+  var vt = __vt;
+  if (__currentParseState === null) {
+    var buf = __buffQueue.shift();
+    if (buf == null) {
+      __busy = false;
       return;
     }
-    this.parseState_.resetBuf(buf);
+    vt.parseState_.resetBuf(buf);
+    __currentParseState = vt.parseState_;
   }
 
-  while (!this.parseState_.isComplete()) {
-    var now = performance.now();
-    if (now > timeLimit) {
-      if (__bindedInterpertPart == null) {
-        __bindedInterpertPart = this.interpretPart.bind(this);
-      }
-      requestAnimationFrame(__bindedInterpertPart);
-      __busyQ = false;
-      return;
-    }
+  var frameTimeBudget = startTime + 12;
 
-    var func = this.parseState_.func;
-    var pos = this.parseState_.pos;
-    var buf = this.parseState_.buf;
+  while (!__currentParseState.isComplete()) {
+    var func = vt.parseState_.func;
+    var pos = vt.parseState_.pos;
+    var buf = vt.parseState_.buf;
 
-    this.parseState_.func.call(this, this.parseState_);
+    vt.parseState_.func.call(vt, vt.parseState_);
 
     if (
-      this.parseState_.func == func &&
-      this.parseState_.pos == pos &&
-      this.parseState_.buf == buf
+      vt.parseState_.func == func &&
+      vt.parseState_.pos == pos &&
+      vt.parseState_.buf == buf
     ) {
+      __busy = false;
+      __currentParseState = null;
       throw 'Parser did not alter the state!';
+    }
+
+    var now = performance.now();
+    if (now > frameTimeBudget) {
+      requestAnimationFrame(__interpret);
+      return;
     }
   }
 
-  __busyQ = false;
-
+  __currentParseState = null;
   if (__buffQueue.length === 0) {
+    __busy = false;
     return;
   }
+  requestAnimationFrame(__interpret);
+}
 
-  if (__bindedInterpertPart == null) {
-    __bindedInterpertPart = this.interpretPart.bind(this);
+hterm.VT.prototype.interpret = function(buf) {
+  __vt = this;
+  __buffQueue.push(this.decode(buf));
+  if (__busy) {
+    return;
   }
-  requestAnimationFrame(__bindedInterpertPart);
+  __interpret(performance.now());
 };
-
-//hterm.VT.prototype.interpret = function(buf) {
-//var b = this.decode(buf);
-//__buffQueue.push(b);
-//this.interpretPart();
-//};
 
 var _VTMaps: Map<string, Map<string, Function>> = new Map();
 
