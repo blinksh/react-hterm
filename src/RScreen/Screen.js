@@ -396,7 +396,7 @@ hterm.Screen.prototype.overwriteString = function(
   touch(cursorRowNode);
 };
 
-hterm.Screen.prototype.deleteChars = function(count: number) {
+hterm.Screen.prototype.deleteChars = function(count: number): number {
   var cursorRowNode = this.rowsArray[this.cursorRowIdx_];
   var spliceIdx = this.cursorNodeIdx_;
   var spliceDeleteCount = 0;
