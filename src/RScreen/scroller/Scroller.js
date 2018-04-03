@@ -671,6 +671,9 @@ export default class Scroller {
     if (typeof timeStamp !== 'number') {
       throw new Error('Invalid timestamp value: ' + timeStamp);
     }
+    if (touches.length >= 2) {
+      return;
+    }
 
     var self = this;
 
@@ -765,8 +768,7 @@ export default class Scroller {
     var currentTouchLeft, currentTouchTop;
 
     // Compute move based around of center of fingers
-    if (touches.length === 2) {
-      return;
+    if (false /*touches.length === 2*/) {
       currentTouchLeft = Math.abs(touches[0].pageX + touches[1].pageX) / 2;
       currentTouchTop = Math.abs(touches[0].pageY + touches[1].pageY) / 2;
     } else {

@@ -580,3 +580,46 @@ test('overwrite', () => {
   expect(ary[2].nodes[1].txt).toEqual('\u5B57');
   expect(ary[2].nodes[2].txt).toEqual('\u4E32');
 });
+
+test('whitespace-fill', () => {
+  const ta = _screen.textAttributes;
+  const row = _createRowWithPlainText('', 0);
+  _screen.pushRow(row);
+
+  // Plain text everywhere.
+  _screen.setCursorPosition(0, 3);
+  _screen.insertString('hi');
+
+  expect(row.nodes[0].txt).toEqual('   hi');
+  ta.reset();
+  _screen.clearCursorRow();
+
+  // Insert wide character.
+  _screen.setCursorPosition(0, 3);
+  ta.wcNode = true;
+  ta.asciiNode = false;
+  var s = '\u5B57';
+  _screen.insertString(s, lib.wc.strWidth(s));
+  expect(row.nodes[0].txt).toEqual('   ');
+  expect(row.nodes[1].txt).toEqual(s);
+  ta.reset();
+  _screen.clearCursorRow();
+
+  // Insert underline text.
+  _screen.setCursorPosition(0, 3);
+  ta.underline = 'solid';
+  _screen.insertString('hi');
+  expect(row.nodes[0].txt).toEqual('   ');
+  expect(row.nodes[1].txt).toEqual('hi'); //TODO: check underline
+  ta.reset();
+  _screen.clearCursorRow();
+
+  // Insert strike-through text.
+  _screen.setCursorPosition(0, 3);
+  ta.strikethrough = true;
+  _screen.insertString('hi');
+  expect(row.nodes[0].txt).toEqual('   ');
+  expect(row.nodes[1].txt).toEqual('hi'); //TODO: check line through
+  ta.reset();
+  _screen.clearCursorRow();
+});
