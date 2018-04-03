@@ -371,6 +371,9 @@ hterm.Terminal.prototype.deleteChars = function(count) {
     this.screen_.insertString(lib.f.getWhitespace(deleted), deleted);
     this.restoreCursor(cursor);
   }
+  var cursorRow = this.screen_.rowsArray[this.screen_.cursorPosition.row];
+  touch(cursorRow);
+  this.scrollPort_.renderRef.touch();
 
   this.clearCursorOverflow();
 };
