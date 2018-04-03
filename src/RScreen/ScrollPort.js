@@ -244,6 +244,9 @@ hterm.ScrollPort.prototype.decorate = function() {
   __screenSize = hterm.getClientSize(this.screen_);
   this.scroller_ = new Scroller(
     function render(left, top, zoom) {
+      if (__pageYOffset === top) {
+        return;
+      }
       __pageYOffset = top || 0;
       self.onScroll_();
     },
