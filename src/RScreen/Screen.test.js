@@ -470,3 +470,113 @@ test('insert', () => {
   expect(ary[2].nodes[5].attrs.asciiNode).toEqual(true);
   expect(ary[2].nodes.length).toEqual(6);
 });
+
+test('overwrite', () => {
+  var ary = [
+    _createRowWithPlainText('', 0),
+    _createRowWithPlainText('', 1),
+    _createRowWithPlainText('', 2),
+  ];
+
+  ary[0].nodes = [node('hello'), node(' '), node('world')];
+
+  _screen.pushRows(ary);
+
+  _screen.setCursorPosition(0, 3);
+  _screen.overwriteString('XXXXX', 5);
+
+  expect(ary[0].nodes[0].txt).toEqual('helXXXXX');
+  expect(ary[0].nodes[1].txt).toEqual('rld');
+  expect(ary[0].nodes.length).toEqual(2);
+
+  _screen.setCursorPosition(1, 0);
+  _screen.overwriteString('XXXXX', 5);
+
+  expect(ary[1].nodes[0].txt).toEqual('XXXXX');
+
+  // Test overwriting widechar string.
+  var wideCharString = '\u4E2D\u6587\u5B57\u4E32';
+  _screen.setCursorPosition(2, 0);
+  _screen.textAttributes.wcNode = true;
+  _screen.textAttributes.asciiNode = false;
+  for (var i = 0; i < wideCharString.length; i++) {
+    var s = wideCharString.charAt(i);
+    _screen.overwriteString(s, lib.wc.strWidth(s));
+  }
+  _screen.textAttributes.wcNode = false;
+  _screen.textAttributes.asciiNode = true;
+
+  expect(ary[2].nodes[0].txt).toEqual('\u4E2D');
+  expect(ary[2].nodes[1].txt).toEqual('\u6587');
+  expect(ary[2].nodes[2].txt).toEqual('\u5B57');
+  expect(ary[2].nodes[3].txt).toEqual('\u4E32');
+
+  _screen.clearCursorRow();
+  _screen.insertString('XXXXX', 5);
+  _screen.setCursorPosition(2, 3);
+  _screen.textAttributes.wcNode = true;
+  _screen.textAttributes.asciiNode = false;
+  for (var i = 0; i < wideCharString.length; i++) {
+    var s = wideCharString.charAt(i);
+    _screen.overwriteString(s, lib.wc.strWidth(s));
+  }
+  _screen.textAttributes.wcNode = false;
+  _screen.textAttributes.asciiNode = true;
+
+  expect(ary[2].nodes[0].txt).toEqual('XXX');
+  expect(ary[2].nodes[1].txt).toEqual('\u4E2D');
+  expect(ary[2].nodes[2].txt).toEqual('\u6587');
+  expect(ary[2].nodes[3].txt).toEqual('\u5B57');
+  expect(ary[2].nodes[4].txt).toEqual('\u4E32');
+
+  _screen.setCursorPosition(2, 7);
+  _screen.overwriteString('OO', 2);
+
+  expect(ary[2].nodes[0].txt).toEqual('XXX');
+  expect(ary[2].nodes[1].txt).toEqual('\u4E2D');
+  expect(ary[2].nodes[2].txt).toEqual('\u6587');
+  expect(ary[2].nodes[3].txt).toEqual('OO');
+  expect(ary[2].nodes[4].txt).toEqual('\u4E32');
+
+  _screen.clearCursorRow();
+  _screen.textAttributes.wcNode = true;
+  _screen.textAttributes.asciiNode = false;
+  for (var i = 0; i < wideCharString.length; i++) {
+    var s = wideCharString.charAt(i);
+    _screen.overwriteString(s, lib.wc.strWidth(s));
+  }
+  _screen.textAttributes.wcNode = false;
+  _screen.textAttributes.asciiNode = true;
+  _screen.setCursorPosition(2, 4);
+  _screen.textAttributes.wcNode = true;
+  _screen.textAttributes.asciiNode = false;
+  for (var i = 0; i < wideCharString.length; i++) {
+    var s = wideCharString.charAt(i);
+    _screen.overwriteString(s, lib.wc.strWidth(s));
+  }
+  _screen.textAttributes.wcNode = false;
+  _screen.textAttributes.asciiNode = true;
+  expect(ary[2].nodes[0].txt).toEqual('\u4E2D');
+  expect(ary[2].nodes[1].txt).toEqual('\u6587');
+  expect(ary[2].nodes[2].txt).toEqual('\u4E2D');
+  expect(ary[2].nodes[3].txt).toEqual('\u6587');
+  expect(ary[2].nodes[4].txt).toEqual('\u5B57');
+  expect(ary[2].nodes[5].txt).toEqual('\u4E32');
+  expect(ary[2].nodes.length).toEqual(6);
+
+  _screen.clearCursorRow();
+  _screen.textAttributes.wcNode = true;
+  _screen.textAttributes.asciiNode = false;
+  for (var i = 0; i < wideCharString.length; i++) {
+    var s = wideCharString.charAt(i);
+    _screen.overwriteString(s, lib.wc.strWidth(s));
+  }
+  _screen.textAttributes.wcNode = false;
+  _screen.textAttributes.asciiNode = true;
+
+  _screen.setCursorPosition(2, 0);
+  _screen.overwriteString('    ', 4);
+  expect(ary[2].nodes[0].txt).toEqual('    ');
+  expect(ary[2].nodes[1].txt).toEqual('\u5B57');
+  expect(ary[2].nodes[2].txt).toEqual('\u4E32');
+});

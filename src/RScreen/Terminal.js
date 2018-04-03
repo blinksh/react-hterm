@@ -363,6 +363,18 @@ hterm.Terminal.prototype.eraseToRight = function(opt_count) {
   this.clearCursorOverflow();
 };
 
+hterm.Terminal.prototype.deleteChars = function(count) {
+  var deleted = this.screen_.deleteChars(count);
+  if (deleted && !this.screen_.textAttributes.isDefault()) {
+    var cursor = this.saveCursor();
+    this.setCursorColumn(this.screenSize.width - deleted);
+    this.screen_.insertString(lib.f.getWhitespace(deleted), deleted);
+    this.restoreCursor(cursor);
+  }
+
+  this.clearCursorOverflow();
+};
+
 hterm.Terminal.prototype.eraseAbove = function() {
   var cursor = this.saveCursor();
 
