@@ -892,7 +892,7 @@ export default class Scroller {
       self.__enableScrollX =
         self.options.scrollingX && distanceX >= minimumTrackingForScroll;
       self.__enableScrollY =
-        self.options.scrollingY && distanceY >= minimumTrackingForScroll;
+        self.options.scrollingY && distanceX < minimumTrackingForScroll;
 
       positions.push(self.__scrollLeft, self.__scrollTop, timeStamp);
 
