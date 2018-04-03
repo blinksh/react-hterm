@@ -766,6 +766,7 @@ export default class Scroller {
 
     // Compute move based around of center of fingers
     if (touches.length === 2) {
+      return;
       currentTouchLeft = Math.abs(touches[0].pageX + touches[1].pageX) / 2;
       currentTouchTop = Math.abs(touches[0].pageY + touches[1].pageY) / 2;
     } else {
