@@ -1,7 +1,7 @@
 // @flow
 
 import { hterm, lib } from './hterm_all';
-//require('./index.css');
+require('./index.css');
 require('./RScreen/hterm_vs.patched');
 require('./RScreen/ScrollPort');
 require('./RScreen/Screen');
@@ -50,7 +50,7 @@ var r = 0;
 setInterval(function() {
   i++;
   t.io.print(i.toString());
-  if (i > 300) {
+  if (i > 1) {
     i = 0;
     t.io.println('\r\n\u001b[0;31m' + r + '\u001b[0m    nice  привет');
     r++;

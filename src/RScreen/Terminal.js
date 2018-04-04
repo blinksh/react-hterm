@@ -495,9 +495,14 @@ hterm.Terminal.prototype.print = function(str) {
     this.scrollPort_.renderRef.touchRow(this.screen_.cursorRow());
   }
 
-  this.scheduleSyncCursorPosition_();
+  //this.scheduleSyncCursorPosition_();
 
   if (this.scrollOnOutput_) {
     this.scrollPort_.scrollRowToBottom(this.getRowCount());
   }
+};
+
+hterm.Terminal.prototype.interpret = function(str) {
+  this.vt.interpret(str);
+ // this.scheduleSyncCursorPosition_();
 };

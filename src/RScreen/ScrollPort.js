@@ -296,6 +296,7 @@ hterm.ScrollPort.prototype.decorate = function() {
   this.resize();
 };
 
+
 hterm.ScrollPort.prototype.on_touchstart_ = function(e) {
   this.scroller_.doTouchStart(e.touches, e.timeStamp);
 };
@@ -312,37 +313,13 @@ hterm.ScrollPort.prototype.on_touchcancel_ = function(e) {
   this.scroller_.doTouchEnd(e.timeStamp);
 };
 
-function __throttle(callback, limit) {
-  var wait = false;
-  var tail = false;
-  return function() {
-    if (!wait) {
-      callback();
-      wait = true;
-      setTimeout(function() {
-        wait = false;
-        if (tail) {
-          tail = false;
-          callback();
-        }
-      }, limit);
-    } else {
-      tail = true;
-    }
-  };
-}
-
 hterm.ScrollPort.prototype.focus = function() {
   //this.iframe_.focus();
-  this.screen_.focus();
+  //this.screen_.focus();
 };
 
 hterm.ScrollPort.prototype.getScreenSize = function() {
-  var size = __screenSize; // hterm.getClientSize(window.document.body);
-  return {
-    height: size.height,
-    width: size.width, // - this.currentScrollbarWidthPx,
-  };
+  return __screenSize;
 };
 
 hterm.ScrollPort.prototype.resetCache = function() {};
@@ -448,16 +425,16 @@ hterm.ScrollPort.prototype.scheduleRedraw = function() {
 };
 
 hterm.ScrollPort.prototype.redraw_ = function() {
-  this.resetSelectBags_();
-  this.selection.sync();
+  //this.resetSelectBags_();
+  //this.selection.sync();
 
   this.syncScrollHeight();
 
   var topRowIndex = this.getTopRowIndex();
   var bottomRowIndex = this.getBottomRowIndex(topRowIndex);
 
-  this.drawTopFold_(topRowIndex);
-  this.drawBottomFold_(bottomRowIndex);
+  //this.drawTopFold_(topRowIndex);
+  //this.drawBottomFold_(bottomRowIndex);
   this.drawVisibleRows_(topRowIndex, bottomRowIndex);
 
   this.syncRowNodesDimensions_();

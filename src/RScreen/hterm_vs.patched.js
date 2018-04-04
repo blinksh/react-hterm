@@ -233,12 +233,14 @@ function __interpret(startTime: number) {
 
       var now = performance.now();
       if (now > frameTimeBudget) {
+        window.t.syncCursorPosition_();
         __busy = requestAnimationFrame(__interpret);
         return;
       }
     }
     __currentParseState = null;
   }
+  window.t.syncCursorPosition_();
   __busy = false;
 }
 
@@ -249,13 +251,9 @@ hterm.VT.prototype.interpret = function(buf) {
     return;
   }
 
-  if (buf.length < 100) {
-    // Typing or other short input
-    __busy = true;
-    __interpret(performance.now());
-    return;
-  }
-  __busy = requestAnimationFrame(__interpret);
+  __busy = true;
+  __interpret(performance.now());
+  //__busy = requestAnimationFrame(__interpret);
 };
 
 var _VTMaps: Map<string, Map<string, Function>> = new Map();
