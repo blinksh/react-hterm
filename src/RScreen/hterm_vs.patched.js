@@ -248,8 +248,14 @@ hterm.VT.prototype.interpret = function(buf) {
   if (__busy) {
     return;
   }
+
+  if (buf.length < 100) {
+    // Typing or other short input
+    __busy = true;
+    __interpret(performance.now());
+    return;
+  }
   __busy = requestAnimationFrame(__interpret);
-  //__interpret(performance.now());
 };
 
 var _VTMaps: Map<string, Map<string, Function>> = new Map();
