@@ -496,6 +496,44 @@ hterm.Screen.prototype.deleteChars = function(count: number): number {
   return rv;
 };
 
+hterm.Screen.prototype.popRow = function() {
+  return this.rowsArray.pop();
+};
+
+/**
+ * Remove rows from the bottom of the screen and return them as an array.
+ *
+ * @param {integer} count The number of rows to remove.
+ * @return {Array.<HTMLElement>} The selected rows.
+ */
+hterm.Screen.prototype.popRows = function(count) {
+  return this.rowsArray.splice(this.rowsArray.length - count, count);
+};
+
+/**
+ * Insert a row at the bottom of the screen.
+ *
+ * @param {HTMLElement} row The row to insert.
+ */
+hterm.Screen.prototype.pushRow = function(row) {
+  this.rowsArray[this.rowsArray.length] = row;
+};
+
+hterm.Screen.prototype.setRow = function(row, index) {
+  this.rowsArray[index] = row;
+};
+
+/**
+ * Insert rows at the bottom of the screen.
+ *
+ * @param {Array.<HTMLElement>} rows The rows to insert.
+ */
+hterm.Screen.prototype.pushRows = function(rows) {
+  for (var i = 0, k = this.rowsArray.length, len = rows.length; i < len; i++) {
+    this.rowsArray[i + k] = rows[i];
+  }
+};
+
 hterm.Screen.prototype.getLineStartRow_ = function(row: RRowType): RRowType {
   var rowIdx = this.rowsArray.indexOf(row);
   if (rowIdx <= 0) {

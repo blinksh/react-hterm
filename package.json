@@ -6,7 +6,7 @@
     "nervjs": "^1.2.15",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
-    "react-scripts": "1.1.1"
+    "react-scripts": "1.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -15,7 +15,7 @@
     "eject": "react-scripts eject"
   },
   "devDependencies": {
-    "flow-bin": "0.68.0",
+    "flow-bin": "^0.69.0",
     "flow-typed": "^2.4.0",
     "prettier": "^1.11.1",
     "serve": "^6.5.3"

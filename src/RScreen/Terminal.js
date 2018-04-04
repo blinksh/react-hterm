@@ -294,7 +294,7 @@ hterm.Terminal.prototype.appendRows_ = function(count) {
       v: 0,
       nodes: [createDefaultNode('', 0)],
     };
-    this.screen_.pushRow(row);
+    this.screen_.setRow(row, cursorRow + i);
   }
 
   var extraRows = this.screen_.rowsArray.length - this.screenSize.height;
@@ -441,7 +441,9 @@ hterm.Terminal.prototype.print = function(str) {
   var strWidth = lib.wc.strWidth(str);
   // Fun edge case: If the string only contains zero width codepoints (like
   // combining characters), we make sure to iterate at least once below.
-  if (strWidth === 0 && str) strWidth = 1;
+  if (strWidth === 0 && str) {
+    strWidth = 1;
+  }
 
   while (startOffset < strWidth) {
     if (this.options_.wraparound && this.screen_.cursorPosition.overflow) {
@@ -470,24 +472,27 @@ hterm.Terminal.prototype.print = function(str) {
       substr = lib.wc.substr(str, startOffset, count);
     }
 
+    var textAttributes = this.screen_.textAttributes;
     var tokens = hterm.TextAttributes.splitWidecharString(substr);
     var len = tokens.length;
     for (var i = 0; i < len; i++) {
       var token = tokens[i];
-      this.screen_.textAttributes.wcNode = token.wcNode;
-      this.screen_.textAttributes.asciiNode = token.asciiNode;
+      textAttributes.wcNode = token.wcNode;
+      textAttributes.asciiNode = token.asciiNode;
 
       if (this.options_.insertMode) {
         this.screen_.insertString(token.str, token.wcStrWidth);
       } else {
         this.screen_.overwriteString(token.str, token.wcStrWidth);
       }
-      this.screen_.textAttributes.wcNode = false;
-      this.screen_.textAttributes.asciiNode = true;
+      textAttributes.wcNode = false;
+      textAttributes.asciiNode = true;
     }
 
     this.screen_.maybeClipCurrentRow();
     startOffset += count;
+
+    this.scrollPort_.renderRef.touchRow(this.screen_.cursorRow());
   }
 
   this.scheduleSyncCursorPosition_();
@@ -495,6 +500,4 @@ hterm.Terminal.prototype.print = function(str) {
   if (this.scrollOnOutput_) {
     this.scrollPort_.scrollRowToBottom(this.getRowCount());
   }
-
-  this.scrollPort_.renderRef.touch();
 };

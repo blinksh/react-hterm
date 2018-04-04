@@ -196,54 +196,50 @@ hterm.VT.prototype.parseUnknown_ = function(parseState) {
  */
 var __buffQueue = [];
 var __currentParseState = null;
-var __busy = false;
+var __busy: boolean | AnimationFrameID = false;
 var __vt;
 
 function __interpret(startTime: number) {
-  __busy = true;
   var vt = __vt;
-  if (__currentParseState === null) {
-    var buf = __buffQueue.shift();
-    if (buf == null) {
-      __busy = false;
-      return;
-    }
-    vt.parseState_.resetBuf(buf);
-    __currentParseState = vt.parseState_;
-  }
 
-  var frameTimeBudget = startTime + 12;
+  const frameTimeBudget = startTime + 12;
 
-  while (!__currentParseState.isComplete()) {
-    var func = vt.parseState_.func;
-    var pos = vt.parseState_.pos;
-    var buf = vt.parseState_.buf;
-
-    vt.parseState_.func.call(vt, vt.parseState_);
-
-    if (
-      vt.parseState_.func == func &&
-      vt.parseState_.pos == pos &&
-      vt.parseState_.buf == buf
-    ) {
-      __busy = false;
-      __currentParseState = null;
-      throw 'Parser did not alter the state!';
+  while (true) {
+    if (__currentParseState === null) {
+      var buf = __buffQueue.shift();
+      if (buf == null) {
+        break;
+      }
+      vt.parseState_.resetBuf(buf);
+      __currentParseState = vt.parseState_;
     }
 
-    var now = performance.now();
-    if (now > frameTimeBudget) {
-      requestAnimationFrame(__interpret);
-      return;
-    }
-  }
+    while (!__currentParseState.isComplete()) {
+      var func = vt.parseState_.func;
+      var pos = vt.parseState_.pos;
+      var buf = vt.parseState_.buf;
 
-  __currentParseState = null;
-  if (__buffQueue.length === 0) {
-    __busy = false;
-    return;
+      vt.parseState_.func.call(vt, vt.parseState_);
+
+      if (
+        vt.parseState_.func == func &&
+        vt.parseState_.pos == pos &&
+        vt.parseState_.buf == buf
+      ) {
+        __busy = false;
+        __currentParseState = null;
+        throw 'Parser did not alter the state!';
+      }
+
+      var now = performance.now();
+      if (now > frameTimeBudget) {
+        __busy = requestAnimationFrame(__interpret);
+        return;
+      }
+    }
+    __currentParseState = null;
   }
-  requestAnimationFrame(__interpret);
+  __busy = false;
 }
 
 hterm.VT.prototype.interpret = function(buf) {
@@ -252,7 +248,8 @@ hterm.VT.prototype.interpret = function(buf) {
   if (__busy) {
     return;
   }
-  __interpret(performance.now());
+  __busy = requestAnimationFrame(__interpret);
+  //__interpret(performance.now());
 };
 
 var _VTMaps: Map<string, Map<string, Function>> = new Map();
