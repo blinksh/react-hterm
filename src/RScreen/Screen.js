@@ -9,7 +9,7 @@ import {
   rowWidth,
   rowText,
 } from './utils';
-import { createNode } from './TextAttributes';
+import { createNode, createDefaultNode } from './TextAttributes';
 
 import { hterm, lib } from '../hterm_all.js';
 
@@ -223,6 +223,199 @@ hterm.Screen.prototype.maybeClipCurrentRow = function() {
   }
 };
 
+hterm.Screen.prototype.overwriteNode = function(
+  str: string,
+  wcwidth: number,
+): number {
+  var cursorRow = this.rowsArray[this.cursorRowIdx_];
+  var cursorNode = cursorRow.nodes[this.cursorNodeIdx_];
+
+  let wcwidthLeft = wcwidth;
+  var cursorNodeText = cursorNode.txt;
+
+  cursorRow.o = false;
+
+  // No matter what, before this function exits the cursor column will have
+  // moved this much.
+  this.cursorPosition.column += wcwidth;
+
+  // Local cache of the cursor offset.
+  var offset = this.cursorOffset_;
+
+  // Reverse offset is the offset measured from the end of the string.
+  // Zero implies that the cursor is at the end of the cursor node.
+  var reverseOffset = cursorNode.wcw - offset;
+
+  if (reverseOffset < 0) {
+    // A negative reverse offset means the cursor is positioned past the end
+    // of the characters on this line.  We'll need to insert the missing
+    // whitespace.
+    var ws = lib.f.getWhitespace(-reverseOffset);
+
+    // This whitespace should be completely unstyled.  Underline, background
+    // color, and strikethrough would be visible on whitespace, so we can't use
+    // one of those spans to hold the text.
+    if (
+      !(
+        this.textAttributes.underline ||
+        this.textAttributes.strikethrough ||
+        this.textAttributes.background ||
+        this.textAttributes.wcNode ||
+        !this.textAttributes.asciiNode ||
+        this.textAttributes.tileData != null
+      )
+    ) {
+      // Best case scenario, we can just pretend the spaces were part of the
+      // original string.
+      str = ws + str;
+    } else if (
+      cursorNode.attrs.isDefault ||
+      !(
+        cursorNode.attrs.uc ||
+        cursorNode.attrs.bc ||
+        cursorNode.attrs.fc ||
+        cursorNode.attrs.wcNode ||
+        !cursorNode.attrs.asciiNode
+      )
+    ) {
+      // Second best case, the current node is able to hold the whitespace.
+      setNodeText(cursorNode, (cursorNodeText += ws));
+    } else {
+      // Worst case, we have to create a new node to hold the whitespace.
+      var wsNode = createDefaultNode(ws, ws.length);
+      this.cursorNodeIdx_++;
+      cursorRow.nodes.splice(this.cursorNodeIdx_, 0, wsNode);
+      cursorNode = wsNode;
+      this.cursorOffset_ = offset = -reverseOffset;
+      cursorNodeText = ws;
+    }
+
+    // We now know for sure that we're at the last character of the cursor node.
+    reverseOffset = 0;
+  }
+
+  let cursorNodeWCWidth = cursorNode.wcw;
+
+  if (this.textAttributes.matchesNode(cursorNode)) {
+    // The new text can be placed directly in the cursor node.
+    if (reverseOffset === 0) {
+      setNodeText(cursorNode, cursorNodeText + str);
+      // No nodes after cursorNode, so nothing to delete
+      if (!cursorRow.nodes[this.cursorNodeIdx_ + 1]) {
+        wcwidthLeft = 0;
+      }
+    } else if (offset === 0) {
+      if (wcwidth >= cursorNodeWCWidth) {
+        setNodeText(cursorNode, str, wcwidth);
+        if (cursorRow.nodes[this.cursorNodeIdx_ + 1]) {
+          wcwidthLeft = wcwidth - cursorNodeWCWidth;
+        } else {
+          wcwidthLeft = 0;
+        }
+      } else {
+        setNodeText(cursorNode, str + nodeSubstr(cursorNode, wcwidth));
+        wcwidthLeft = 0;
+      }
+    } else {
+      if (wcwidth + offset >= cursorNodeWCWidth) {
+        setNodeText(cursorNode, nodeSubstr(cursorNode, 0, offset) + str);
+        wcwidthLeft = wcwidth + offset - cursorNodeWCWidth;
+      } else {
+        var s =
+          nodeSubstr(cursorNode, 0, offset) +
+          str +
+          nodeSubstr(cursorNode, offset + wcwidth);
+
+        setNodeText(cursorNode, s);
+        wcwidthLeft = 0;
+      }
+    }
+
+    this.cursorOffset_ += wcwidth;
+    return wcwidthLeft;
+  }
+
+  // The cursor node is the wrong style for the new text.  If we're at the
+  // beginning or end of the cursor node, then the adjacent node is also a
+  // potential candidate.
+
+  if (offset === 0) {
+    // At the beginning of the cursor node, the check the previous sibling.
+    var previousSibling = cursorRow.nodes[this.cursorNodeIdx_ - 1];
+    if (previousSibling && this.textAttributes.matchesNode(previousSibling)) {
+      setNodeText(previousSibling, previousSibling.txt + str);
+      this.cursorNodeIdx_ = this.cursorNodeIdx_ - 1;
+      this.cursorOffset_ = previousSibling.wcw;
+      return wcwidthLeft;
+    }
+
+    var newNode = this.textAttributes.createNode(str, wcwidth);
+    cursorRow.nodes.splice(this.cursorNodeIdx_, 0, newNode);
+    //cursorNode = newNode;
+    this.cursorOffset_ = wcwidth;
+    if (cursorNodeWCWidth <= wcwidth) {
+      cursorRow.nodes.splice(this.cursorNodeIdx_ + 1, 1);
+      wcwidthLeft = wcwidth - cursorNodeWCWidth;
+    } else {
+      setNodeText(cursorNode, nodeSubstr(cursorNode, wcwidth));
+      wcwidthLeft = 0;
+    }
+    return wcwidthLeft;
+  }
+
+  if (reverseOffset === 0) {
+    // At the end of the cursor node, the check the next sibling.
+    var nextSibling = cursorRow.nodes[this.cursorNodeIdx_ + 1];
+    if (nextSibling && this.textAttributes.matchesNode(nextSibling)) {
+      setNodeText(nextSibling, str + nextSibling.txt);
+      this.cursorNodeIdx_++;
+      this.cursorOffset_ = wcwidth; //lib.wc.strWidth(str);
+      return wcwidthLeft;
+    }
+
+    newNode = this.textAttributes.createNode(str, wcwidth);
+    cursorRow.nodes.splice(this.cursorNodeIdx_ + 1, 0, newNode);
+    this.cursorNodeIdx_++;
+    // We specifically need to include any missing whitespace here, since it's
+    // going in a new node.
+    this.cursorOffset_ = newNode.wcw;
+    return wcwidthLeft;
+  }
+
+  if (cursorNodeWCWidth <= offset + wcwidth) {
+    setNodeText(cursorNode, nodeSubstr(cursorNode, 0, offset));
+    var newNode = this.textAttributes.createNode(str, wcwidth);
+    this.cursorNodeIdx_++;
+    cursorRow.nodes.splice(this.cursorNodeIdx_, 0, newNode);
+    this.cursorOffset_ = wcwidth;
+    wcwidthLeft = offset + wcwidth - cursorNodeWCWidth;
+    return wcwidthLeft;
+  }
+
+  // Worst case, we're somewhere in the middle of the cursor node.  We'll
+  // have to split it into two nodes and insert our new container in between.
+  var newNode = this.textAttributes.createNode(str);
+  var nodes = __insertNode(cursorNode, offset, newNode);
+  var nodesCount = nodes.length;
+  if (nodesCount === 1) {
+    cursorRow.nodes.splice(this.cursorNodeIdx_, 1, nodes[0]);
+  } else if (nodesCount === 2) {
+    cursorRow.nodes.splice(this.cursorNodeIdx_, 1, nodes[0], nodes[1]);
+  } else if (nodesCount === 3) {
+    cursorRow.nodes.splice(
+      this.cursorNodeIdx_,
+      1,
+      nodes[0],
+      nodes[1],
+      nodes[2],
+    );
+    this.cursorNodeIdx_++;
+  }
+  this.cursorNodeIdx_++;
+  this.cursorOffset_ = 0;
+  return wcwidthLeft;
+};
+
 hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
   var cursorRow = this.rowsArray[this.cursorRowIdx_];
   var cursorNode = cursorRow.nodes[this.cursorNodeIdx_];
@@ -278,7 +471,7 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
       setNodeText(cursorNode, (cursorNodeText += ws));
     } else {
       // Worst case, we have to create a new node to hold the whitespace.
-      var wsNode = createNode(ws, ws.length);
+      var wsNode = createDefaultNode(ws, ws.length);
       this.cursorNodeIdx_++;
       cursorRow.nodes.splice(this.cursorNodeIdx_, 0, wsNode);
       cursorNode = wsNode;
@@ -391,8 +584,10 @@ hterm.Screen.prototype.overwriteString = function(
     return;
   }
 
-  this.insertString(str, wcwidth);
-  this.deleteChars(wcwidth);
+  var wcwidthLeft = this.overwriteNode(str, wcwidth);
+  if (wcwidthLeft > 0) {
+    this.deleteChars(wcwidthLeft);
+  }
   touch(cursorRowNode);
 };
 
