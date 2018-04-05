@@ -129,6 +129,7 @@ hterm.ScrollPort.prototype.decorate = function() {
     '  display: block;' +
     '  height: var(--hterm-charsize-height);' +
     '  line-height: var(--hterm-charsize-height);' +
+    '  isolation: isolate;' +
     '}';
   doc.head.appendChild(style);
 
@@ -189,8 +190,6 @@ hterm.ScrollPort.prototype.decorate = function() {
     'left: 0;' +
     'right: 0;' +
     'bottom: 0;' +
-    'contain: strict;' +
-    'isolation: isolate;' +
     'background-color: inherit;' +
     'overflow: hidden;' +
     '-webkit-user-select: text;' +
@@ -295,7 +294,6 @@ hterm.ScrollPort.prototype.decorate = function() {
 
   this.resize();
 };
-
 
 hterm.ScrollPort.prototype.on_touchstart_ = function(e) {
   this.scroller_.doTouchStart(e.touches, e.timeStamp);

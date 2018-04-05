@@ -199,10 +199,14 @@ var __currentParseState = null;
 var __busy: boolean | AnimationFrameID = false;
 var __vt;
 
+window.__totalI = 0;
+window.__skipI = 0;
+window.__breakI = 0;
+
 function __interpret(startTime: number) {
   var vt = __vt;
 
-  const frameTimeBudget = startTime + 12;
+  const frameTimeBudget = startTime + 11;
 
   while (true) {
     if (__currentParseState === null) {
@@ -233,14 +237,16 @@ function __interpret(startTime: number) {
 
       var now = performance.now();
       if (now > frameTimeBudget) {
-        window.t.syncCursorPosition_();
+        //        window.t.syncCursorPosition_();
         __busy = requestAnimationFrame(__interpret);
+        window.__breakI++;
         return;
       }
     }
     __currentParseState = null;
   }
   window.t.syncCursorPosition_();
+  window.__totalI++;
   __busy = false;
 }
 
@@ -248,6 +254,7 @@ hterm.VT.prototype.interpret = function(buf) {
   __vt = this;
   __buffQueue.push(this.decode(buf));
   if (__busy) {
+    window.__skipI++;
     return;
   }
 

@@ -55,7 +55,6 @@ hterm.Terminal.prototype.decorate = function(div) {
     '  background-color: transparent !important;' +
     '  border-width: 2px;' +
     '  border-style: solid;' +
-    '  isolatation: isolate;' +
     '}' +
     '.wc-node {' +
     '  display: inline-block;' +
@@ -112,11 +111,13 @@ hterm.Terminal.prototype.decorate = function(div) {
   this.cursorNode_.className = 'cursor-node';
   this.cursorNode_.style.cssText =
     'position: absolute;' +
-    'left: calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col));' +
-    'top: calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row));' +
+    //'left: calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col));' +
+    //'top: calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row));' +
     'display: block;' +
     'width: var(--hterm-charsize-width);' +
     'height: var(--hterm-charsize-height);' +
+    '  isolatation: isolate;' +
+    '  transform: translate3d(calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col)), calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row)), 0);' +
     '-webkit-transition: opacity, background-color 100ms linear;' +
     '-moz-transition: opacity, background-color 100ms linear;';
 
@@ -260,7 +261,7 @@ hterm.Terminal.prototype.scheduleScrollDown_ = function() {
   this.timeouts_.scrollDown = setTimeout(function() {
     self.timeouts_.scrollDown = 0;
     self.scrollPort_.scrollToBottom();
-  }, 10);
+  }, 20);
 };
 
 hterm.Terminal.prototype.copySelectionToClipboard = function() {};
@@ -504,5 +505,5 @@ hterm.Terminal.prototype.print = function(str) {
 
 hterm.Terminal.prototype.interpret = function(str) {
   this.vt.interpret(str);
- // this.scheduleSyncCursorPosition_();
+  // this.scheduleSyncCursorPosition_();
 };
