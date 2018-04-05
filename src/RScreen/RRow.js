@@ -31,14 +31,14 @@ export default class RRow extends Component<PropsType> {
     return this._v !== nextProps.row.v;
   }
 
+  _touch = () => this.forceUpdate();
+
   touch() {
     if (this._dirty) {
       return;
     }
 
     this._dirty = true;
-    ReactDOM.unstable_deferredUpdates(() => {
-      this.forceUpdate();
-    });
+    ReactDOM.unstable_deferredUpdates(this._touch);
   }
 }

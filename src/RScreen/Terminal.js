@@ -342,24 +342,78 @@ hterm.Terminal.prototype.eraseToRight = function(opt_count) {
 
   var maxCount = this.screenSize.width - this.screen_.cursorPosition.column;
   var count = opt_count ? Math.min(opt_count, maxCount) : maxCount;
+  var cursorRow = this.screen_.rowsArray[this.screen_.cursorPosition.row];
 
   if (
     this.screen_.textAttributes.background ===
     this.screen_.textAttributes.DEFAULT_COLOR
   ) {
-    var cursorRow = this.screen_.rowsArray[this.screen_.cursorPosition.row];
     if (rowWidth(cursorRow) <= this.screen_.cursorPosition.column + count) {
       this.screen_.deleteChars(count);
       this.clearCursorOverflow();
-      touch(cursorRow);
-      this.scrollPort_.renderRef.touch();
+      this.scrollPort_.renderRef.touchRow(cursorRow);
       return;
     }
   }
 
   var cursor = this.saveCursor();
   this.screen_.overwriteString(lib.f.getWhitespace(count), count);
-  this.scrollPort_.renderRef.touch();
+  this.scrollPort_.renderRef.touchRow(cursorRow);
+  this.restoreCursor(cursor);
+  this.clearCursorOverflow();
+};
+
+hterm.Terminal.prototype.insertLines = function(count) {
+  var cursorRow = this.screen_.cursorPosition.row;
+
+  var bottom = this.getVTScrollBottom();
+  count = Math.min(count, bottom - cursorRow);
+
+  // The moveCount is the number of rows we need to relocate to make room for
+  // the new row(s).  The count is the distance to move them.
+  var moveCount = bottom - cursorRow - count + 1;
+  if (moveCount) this.moveRows_(cursorRow, moveCount, cursorRow + count);
+
+  for (var i = count - 1; i >= 0; i--) {
+    this.setAbsoluteCursorPosition(cursorRow + i, 0);
+    this.screen_.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    this.scrollPort_.renderRef.touchRow(cursorRow);
+  }
+};
+
+hterm.Terminal.prototype.deleteLines = function(count) {
+  var cursor = this.saveCursor();
+
+  var top = cursor.row;
+  var bottom = this.getVTScrollBottom();
+
+  var maxCount = bottom - top + 1;
+  count = Math.min(count, maxCount);
+
+  var moveStart = bottom - count + 1;
+  if (count != maxCount) this.moveRows_(top, count, moveStart);
+
+  for (var i = 0; i < count; i++) {
+    this.setAbsoluteCursorPosition(moveStart + i, 0);
+    this.screen_.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    this.scrollPort_.renderRef.touchRow(cursorRow);
+  }
+
+  this.restoreCursor(cursor);
+  this.clearCursorOverflow();
+};
+
+hterm.Terminal.prototype.insertSpace = function(count) {
+  var cursor = this.saveCursor();
+
+  var ws = lib.f.getWhitespace(count || 1);
+  this.screen_.insertString(ws, ws.length);
+  this.screen_.maybeClipCurrentRow();
+  var cursorRow = this.screen_.cursorRow();
+  this.scrollPort_.renderRef.touchRow(cursorRow);
+
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
 };
@@ -372,9 +426,8 @@ hterm.Terminal.prototype.deleteChars = function(count) {
     this.screen_.insertString(lib.f.getWhitespace(deleted), deleted);
     this.restoreCursor(cursor);
   }
-  var cursorRow = this.screen_.rowsArray[this.screen_.cursorPosition.row];
-  touch(cursorRow);
-  this.scrollPort_.renderRef.touch();
+  var cursorRow = this.screen_.cursorRow();
+  this.scrollPort_.renderRef.touchRow(cursorRow);
 
   this.clearCursorOverflow();
 };
@@ -387,11 +440,13 @@ hterm.Terminal.prototype.eraseAbove = function() {
   for (var i = 0; i < cursor.row; i++) {
     this.setAbsoluteCursorPosition(i, 0);
     this.screen_.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    touch(cursorRow);
+    this.scrollPort_.renderRef.touchRow(cursorRow);
   }
 
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
-  this.scrollPort_.renderRef.touch();
 };
 
 hterm.Terminal.prototype.eraseLine = function() {
@@ -399,6 +454,21 @@ hterm.Terminal.prototype.eraseLine = function() {
   this.screen_.clearCursorRow();
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
+  this.scrollPort_.renderRef.touchRow(this.screen_.cursorRow());
+};
+
+hterm.Terminal.prototype.fill = function(ch) {
+  var cursor = this.saveCursor();
+
+  this.setAbsoluteCursorPosition(0, 0);
+  for (var row = 0; row < this.screenSize.height; row++) {
+    for (var col = 0; col < this.screenSize.width; col++) {
+      this.setAbsoluteCursorPosition(row, col);
+      this.screen_.overwriteString(ch, 1);
+    }
+  }
+
+  this.restoreCursor(cursor);
   this.scrollPort_.renderRef.touch();
 };
 
@@ -414,10 +484,11 @@ hterm.Terminal.prototype.clearHome = function(opt_screen) {
   for (var i = 0; i < bottom; i++) {
     screen.setCursorPosition(i, 0);
     screen.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    this.scrollPort_.renderRef.touchRow(cursorRow);
   }
 
   screen.setCursorPosition(0, 0);
-  this.scrollPort_.renderRef.touch();
 };
 
 hterm.Terminal.prototype.eraseBelow = function() {
@@ -429,11 +500,12 @@ hterm.Terminal.prototype.eraseBelow = function() {
   for (var i = cursor.row + 1; i <= bottom; i++) {
     this.setAbsoluteCursorPosition(i, 0);
     this.screen_.clearCursorRow();
+    var cursorRow = this.screen_.cursorRow();
+    this.scrollPort_.renderRef.touchRow(cursorRow);
   }
 
   this.restoreCursor(cursor);
   this.clearCursorOverflow();
-  this.scrollPort_.renderRef.touch();
 };
 
 hterm.Terminal.prototype.print = function(str) {

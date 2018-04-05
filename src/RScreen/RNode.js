@@ -36,6 +36,7 @@ export default class RNode extends Component<PropsType> {
 
     if (!attrs.asciiNode) {
       if (node.wcw < 300) {
+        // TODO: move to config or const
         className += ' wc wc' + node.wcw;
       } else {
         className += ' wc';
