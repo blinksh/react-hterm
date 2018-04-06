@@ -13,18 +13,6 @@ export function genKey(): number {
   return __nodeKey++ % 1000000;
 }
 
-export function setNodeText(node: RNodeType, text: string, wcwidth?: number) {
-  node.txt = text;
-  if (wcwidth != null) {
-    node.wcw = wcwidth;
-  } else if (node.attrs.asciiNode) {
-    node.wcw = text.length;
-  } else {
-    node.wcw = lib.wc.strWidth(text);
-  }
-  touch(node);
-}
-
 export function nodeSubstr(
   node: RNodeType,
   start: number,

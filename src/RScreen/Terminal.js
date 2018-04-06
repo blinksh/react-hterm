@@ -335,6 +335,15 @@ hterm.Terminal.prototype.moveRows_ = function(fromIndex, count, toIndex) {
   this.scrollPort_.scheduleInvalidate();
 };
 
+hterm.Terminal.prototype.eraseToLeft = function() {
+  var cursor = this.saveCursor();
+  this.setCursorColumn(0);
+  const count = cursor.column + 1;
+  this.screen_.overwriteString(lib.f.getWhitespace(count), count);
+  this.scrollPort_.renderRef.touchRow(this.screen_.cursorRow());
+  this.restoreCursor(cursor);
+};
+
 hterm.Terminal.prototype.eraseToRight = function(opt_count) {
   if (this.screen_.cursorPosition.overflow) {
     return;
@@ -372,13 +381,14 @@ hterm.Terminal.prototype.insertLines = function(count) {
   // The moveCount is the number of rows we need to relocate to make room for
   // the new row(s).  The count is the distance to move them.
   var moveCount = bottom - cursorRow - count + 1;
-  if (moveCount) this.moveRows_(cursorRow, moveCount, cursorRow + count);
+  if (moveCount) {
+    this.moveRows_(cursorRow, moveCount, cursorRow + count);
+  }
 
   for (var i = count - 1; i >= 0; i--) {
     this.setAbsoluteCursorPosition(cursorRow + i, 0);
     this.screen_.clearCursorRow();
-    var cursorRow = this.screen_.cursorRow();
-    this.scrollPort_.renderRef.touchRow(cursorRow);
+    this.scrollPort_.renderRef.touchRow(this.screen_.cursorRow());
   }
 };
 

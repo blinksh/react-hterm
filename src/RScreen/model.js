@@ -18,7 +18,7 @@ export type RNodeType = {|
   txt: string,
   wcw: number,
   v: number,
-  +attrs: RAttributesType,
+  attrs: RAttributesType,
 |};
 
 export type RRowType = {|

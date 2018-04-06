@@ -1,7 +1,7 @@
 // @flow
 import type { RNodeType, RAttributesType } from './model';
 import { hterm, lib } from '../hterm_all.js';
-import { genKey } from './utils';
+import { genKey, touch } from './utils';
 
 var __cssStyleSheet = null;
 const __defaultClassName = '';
@@ -31,6 +31,41 @@ function __attrsHash(attrs: RAttributesType) {
 }
 
 const __attrsMap: Map<string, RAttributesType> = new Map();
+
+export function setNodeText(node: RNodeType, text: string, wcwidth?: number) {
+  node.txt = text;
+  if (wcwidth != null) {
+    node.wcw = wcwidth;
+  } else if (node.attrs.asciiNode) {
+    node.wcw = text.length;
+  } else {
+    node.wcw = lib.wc.strWidth(text);
+  }
+  touch(node);
+}
+
+export function setNodeAttributedText(
+  attrs: hterm.TextAttributes,
+  node: RNodeType,
+  text: string,
+  wcwidth?: number,
+) {
+  node.txt = text;
+  if (attrs && node.attrs.asciiNode !== attrs.asciiNode) {
+    if (node.attrs === __defaultAttrs) {
+      node.attrs = { ...__defaultAttrs };
+    }
+    node.attrs.asciiNode = node.attrs.asciiNode && attrs.asciiNode;
+  }
+  if (wcwidth != null) {
+    node.wcw = wcwidth;
+  } else if (node.attrs.asciiNode) {
+    node.wcw = text.length;
+  } else {
+    node.wcw = lib.wc.strWidth(text);
+  }
+  touch(node);
+}
 
 export function createDefaultNode(text: string, wcwidth: number): RNodeType {
   return {
@@ -86,24 +121,9 @@ hterm.TextAttributes.prototype.createNode = function(
       attrs.uriId = this.uriId;
     }
     attrs.className = this.className;
-    if (
-      typeof this.foreground !== 'number' &&
-      this.foreground !== this.DEFAULT_COLOR
-    ) {
-      attrs.fc = this.foreground;
-    }
-    if (
-      typeof this.background !== 'number' &&
-      this.background !== this.DEFAULT_COLOR
-    ) {
-      attrs.bc = this.background;
-    }
-    if (
-      typeof this.underlineColor !== 'number' &&
-      this.underlineColor !== this.DEFAULT_COLOR
-    ) {
-      attrs.uc = this.underlineColor;
-    }
+    attrs.fc = this.fc;
+    attrs.bc = this.bc;
+    attrs.uc = this.uc;
 
     const attrsHash = __attrsHash(attrs);
     var cachedAttrs = __attrsMap.get(attrsHash);
@@ -277,15 +297,34 @@ var __classNameMemory = new Map();
 
 function __generateClassName(attrs: hterm.TextAttributes): string {
   var result = [];
-
-  if (typeof attrs.foreground === 'number') {
+  if (
+    typeof attrs.foreground !== 'number' &&
+    attrs.foreground !== attrs.DEFAULT_COLOR
+  ) {
+    attrs.fc = attrs.foreground;
+  } else {
     result.push(__c[attrs.foreground]);
+    attrs.fc = __defaultColor;
   }
-  if (typeof attrs.background === 'number') {
+
+  if (
+    typeof attrs.background !== 'number' &&
+    attrs.background !== attrs.DEFAULT_COLOR
+  ) {
+    attrs.bc = attrs.background;
+  } else {
     result.push(__bc[attrs.background]);
+    attrs.bc = __defaultColor;
   }
-  if (typeof attrs.underlineColor === 'number') {
+
+  if (
+    typeof attrs.underlineColor !== 'number' &&
+    attrs.underlineColor !== attrs.DEFAULT_COLOR
+  ) {
+    attrs.uc = attrs.underlineColor;
+  } else {
     result.push(__uc[attrs.underlineColor]);
+    attrs.uc = __defaultColor;
   }
 
   if (attrs.enableBold && attrs.bold) {
@@ -343,7 +382,11 @@ hterm.TextAttributes.prototype.matchesNode = function(
     !(this.wcNode || attrs.wcNode) &&
     //!(this.tileData != null || attrs.tileData) &&
     this.className === attrs.className &&
-    this.uriId === attrs.uriId
+    this.fc == attrs.fc &&
+    this.bc == attrs.bc &&
+    this.uc == attrs.uc &&
+    this.uriId == attrs.uriId &&
+    this.uri == attrs.uri
   );
 };
 
