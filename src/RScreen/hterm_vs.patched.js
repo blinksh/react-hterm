@@ -4,6 +4,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import { hterm } from '../hterm_all.js';
+import ReactDOM from 'react-dom';
 
 /**
  * Skip over the string until the next String Terminator (ST, 'ESC \') or
@@ -139,7 +140,7 @@ hterm.VT.prototype.dispatch = function(type, code, parseState) {
 };
 
 hterm.VT.ParseState.prototype.peekRemainingBuf = function() {
-  return this.buf.substring(this.pos);
+  return this.buf.substr(this.pos);
 };
 
 hterm.VT.ParseState.prototype.peekChar = function() {
@@ -199,14 +200,8 @@ var __currentParseState = null;
 var __busy: boolean | AnimationFrameID = false;
 var __vt;
 
-window.__totalI = 0;
-window.__skipI = 0;
-window.__breakI = 0;
-
-function __interpret(startTime: number) {
+function __interpret() {
   var vt = __vt;
-
-  const frameTimeBudget = startTime + 11;
 
   while (true) {
     if (__currentParseState === null) {
@@ -234,19 +229,10 @@ function __interpret(startTime: number) {
         __currentParseState = null;
         throw 'Parser did not alter the state!';
       }
-
-      var now = performance.now();
-      if (now > frameTimeBudget) {
-        //        window.t.syncCursorPosition_();
-        __busy = requestAnimationFrame(__interpret);
-        window.__breakI++;
-        return;
-      }
     }
     __currentParseState = null;
   }
   window.t.syncCursorPosition_();
-  window.__totalI++;
   __busy = false;
 }
 
@@ -254,13 +240,82 @@ hterm.VT.prototype.interpret = function(buf) {
   __vt = this;
   __buffQueue.push(this.decode(buf));
   if (__busy) {
-    window.__skipI++;
     return;
   }
 
   __busy = true;
-  __interpret(performance.now());
-  //__busy = requestAnimationFrame(__interpret);
+  ReactDOM.unstable_deferredUpdates(__interpret);
+};
+
+function __finishParsing(parseState) {
+  // Resetting the arguments isn't strictly necessary, but it makes debugging
+  // less confusing (otherwise args will stick around until the next sequence
+  // that needs arguments).
+  parseState.resetArguments();
+  // We need to clear subargs since we explicitly set it.
+  parseState.subargs = null;
+  parseState.resetParseFunction();
+}
+
+hterm.VT.prototype.parseCSI_ = function(parseState) {
+  var ch = parseState.peekChar();
+  var args = parseState.args;
+
+  if (ch >= '@' && ch <= '~') {
+    // This is the final character.
+    this.dispatch(
+      'CSI',
+      this.leadingModifier_ + this.trailingModifier_ + ch,
+      parseState,
+    );
+    __finishParsing(parseState);
+  } else if (ch === ';') {
+    // Parameter delimiter.
+    if (this.trailingModifier_) {
+      // Parameter delimiter after the trailing modifier.  That's a paddlin'.
+      __finishParsing(parseState);
+    } else {
+      if (!args.length) {
+        // They omitted the first param, we need to supply it.
+        args.push('');
+      }
+
+      args.push('');
+    }
+  } else if ((ch >= '0' && ch <= '9') || ch === ':') {
+    // Next byte in the current parameter.
+
+    if (this.trailingModifier_) {
+      // Numeric parameter after the trailing modifier.  That's a paddlin'.
+      __finishParsing(parseState);
+    } else {
+      if (!args.length) {
+        args[0] = ch;
+      } else {
+        args[args.length - 1] += ch;
+      }
+
+      // Possible sub-parameters.
+      if (ch === ':') {
+        parseState.argSetSubargs(args.length - 1);
+      }
+    }
+  } else if (ch >= ' ' && ch <= '?') {
+    // Modifier character.
+    if (!args.length) {
+      this.leadingModifier_ += ch;
+    } else {
+      this.trailingModifier_ += ch;
+    }
+  } else if (this.cc1Pattern_.test(ch)) {
+    // Control character.
+    this.dispatch('CC1', ch, parseState);
+  } else {
+    // Unexpected character in sequence, bail out.
+    __finishParsing(parseState);
+  }
+
+  parseState.advance(1);
 };
 
 var _VTMaps: Map<string, Map<string, Function>> = new Map();

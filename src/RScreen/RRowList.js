@@ -49,6 +49,7 @@ export default class RRowList extends React.Component<*> {
     }
 
     this._dirty = true;
-    ReactDOM.unstable_deferredUpdates(this._touch);
+    this._touch();
+    //ReactDOM.unstable_deferredUpdates(this._touch);
   }
 }

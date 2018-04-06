@@ -39,6 +39,7 @@ export default class RRow extends Component<PropsType> {
     }
 
     this._dirty = true;
-    ReactDOM.unstable_deferredUpdates(this._touch);
+    this._touch();
+    //ReactDOM.unstable_deferredUpdates(this._touch);
   }
 }
