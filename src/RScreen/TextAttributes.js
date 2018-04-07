@@ -274,7 +274,7 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   }
   rows.push('.u { -webkit-text-decoration: underline;}');
   rows.push('.s { -webkit-text-decoration: line-through;}');
-  rows.push('.us { -webkit-text-decoration: underline line-throught;}');
+  rows.push('.us { -webkit-text-decoration: underline line-through;}');
 
   rows.push('.u1 { -webkit-text-decoration-style: solid;}');
   rows.push('.u2 { -webkit-text-decoration-style: double;}');
