@@ -294,8 +294,6 @@ hterm.Screen.prototype.overwriteNode = function(
     reverseOffset = 0;
   }
 
-  let cursorNodeWCWidth = cursorNode.wcw;
-
   if (this.textAttributes.matchesNode(cursorNode)) {
     // The new text can be placed directly in the cursor node.
     if (reverseOffset === 0) {
@@ -309,10 +307,11 @@ hterm.Screen.prototype.overwriteNode = function(
         wcwidthLeft = 0;
       }
     } else if (offset === 0) {
-      if (wcwidth >= cursorNodeWCWidth) {
+      const wcdiff = wcwidth - cursorNode.wcw;
+      if (wcdiff >= 0) {
         setNodeAttributedText(this.textAttributes, cursorNode, str, wcwidth);
         if (cursorRow.nodes[this.cursorNodeIdx_ + 1]) {
-          wcwidthLeft = wcwidth - cursorNodeWCWidth;
+          wcwidthLeft = wcdiff;
         } else {
           wcwidthLeft = 0;
         }
@@ -325,13 +324,14 @@ hterm.Screen.prototype.overwriteNode = function(
         wcwidthLeft = 0;
       }
     } else {
-      if (wcwidth + offset >= cursorNodeWCWidth) {
+      const wcdiff = wcwidth + offset - cursorNode.wcw;
+      if (wcdiff >= 0) {
         setNodeAttributedText(
           this.textAttributes,
           cursorNode,
           nodeSubstr(cursorNode, 0, offset) + str,
         );
-        wcwidthLeft = wcwidth + offset - cursorNodeWCWidth;
+        wcwidthLeft = wcdiff;
       } else {
         var s =
           nodeSubstr(cursorNode, 0, offset) +
@@ -360,6 +360,16 @@ hterm.Screen.prototype.overwriteNode = function(
         previousSibling,
         previousSibling.txt + str,
       );
+
+      const wcdiff = wcwidth - cursorNode.wcw;
+      if (wcdiff >= 0) {
+        cursorRow.nodes.splice(this.cursorNodeIdx_, 1);
+        wcwidthLeft = wcdiff;
+      } else if (!cursorNode.attrs.wcNode) {
+        setNodeText(cursorNode, nodeSubstr(cursorNode, wcwidth));
+        wcwidthLeft = 0;
+      }
+
       this.cursorNodeIdx_ = this.cursorNodeIdx_ - 1;
       this.cursorOffset_ = previousSibling.wcw;
       return wcwidthLeft;
@@ -368,9 +378,10 @@ hterm.Screen.prototype.overwriteNode = function(
     var newNode = this.textAttributes.createNode(str, wcwidth);
     //cursorNode = newNode;
     this.cursorOffset_ = wcwidth;
-    if (cursorNodeWCWidth <= wcwidth) {
+    const wcdiff = wcwidth - cursorNode.wcw;
+    if (wcdiff >= 0) {
       cursorRow.nodes.splice(this.cursorNodeIdx_, 1, newNode);
-      wcwidthLeft = wcwidth - cursorNodeWCWidth;
+      wcwidthLeft = wcdiff;
     } else {
       cursorRow.nodes.splice(this.cursorNodeIdx_, 0, newNode);
       setNodeText(cursorNode, nodeSubstr(cursorNode, wcwidth));
@@ -383,11 +394,19 @@ hterm.Screen.prototype.overwriteNode = function(
     // At the end of the cursor node, the check the next sibling.
     var nextSibling = cursorRow.nodes[this.cursorNodeIdx_ + 1];
     if (nextSibling && this.textAttributes.matchesNode(nextSibling)) {
-      setNodeAttributedText(
-        this.textAttributes,
-        nextSibling,
-        str + nextSibling.txt,
-      );
+      const wcdiff = wcwidth - nextSibling.wcw;
+
+      if (wcdiff >= 0) {
+        setNodeAttributedText(this.textAttributes, nextSibling, str, wcwidth);
+        wcwidthLeft = wcdiff;
+      } else {
+        setNodeAttributedText(
+          this.textAttributes,
+          nextSibling,
+          str + nodeSubstr(nextSibling, wcwidth),
+        );
+        wcwidthLeft = 0;
+      }
       this.cursorNodeIdx_++;
       this.cursorOffset_ = wcwidth; //lib.wc.strWidth(str);
       return wcwidthLeft;
@@ -396,19 +415,25 @@ hterm.Screen.prototype.overwriteNode = function(
     newNode = this.textAttributes.createNode(str, wcwidth);
     cursorRow.nodes.splice(this.cursorNodeIdx_ + 1, 0, newNode);
     this.cursorNodeIdx_++;
+
+    if (!nextSibling) {
+      wcwidthLeft = 0;
+    }
     // We specifically need to include any missing whitespace here, since it's
     // going in a new node.
     this.cursorOffset_ = newNode.wcw;
     return wcwidthLeft;
   }
 
-  if (cursorNodeWCWidth <= offset + wcwidth) {
+  const wcdiff = offset + wcwidth - cursorNode.wcw;
+
+  if (wcdiff >= 0) {
     setNodeText(cursorNode, nodeSubstr(cursorNode, 0, offset));
     var newNode = this.textAttributes.createNode(str, wcwidth);
     this.cursorNodeIdx_++;
     cursorRow.nodes.splice(this.cursorNodeIdx_, 0, newNode);
     this.cursorOffset_ = wcwidth;
-    wcwidthLeft = offset + wcwidth - cursorNodeWCWidth;
+    wcwidthLeft = wcdiff;
     return wcwidthLeft;
   }
 
