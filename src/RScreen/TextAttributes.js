@@ -245,8 +245,10 @@ var __bc = []; // background color
 var __uc = []; // underline color
 var __b = 'b'; // bold
 var __bl = 'bl'; // blink
-var __s = 's'; // blink
-var __u = {
+var __u = 'u'; // underline
+var __s = 's'; // strikethrough
+var __us = 'us'; // underline and strikethrough
+var __uu = {
   solid: 'u1',
   double: 'u2',
   wavy: 'u3',
@@ -268,14 +270,18 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
     var color = attrs.colorPalette[i];
     rows.push('span.c' + i + ' { color: ' + color + ';}');
     rows.push('span.bc' + i + ' { background: ' + color + ';}');
-    rows.push('span.uc' + i + ' { text-decoration-color: ' + color + ';}');
+    rows.push('span.uc' + i + ' { -webkit-text-decoration-color: ' + color + ';}');
   }
-  rows.push('.u { text-decoration: underline;}');
-  //solid: 'u1',
-  //double: 'u2',
-  //wavy: 'u3',
-  //dotted: 'u4',
-  //dashed: 'u5',
+  rows.push('.u { -webkit-text-decoration: underline;}');
+  rows.push('.s { -webkit-text-decoration: line-throught;}');
+  rows.push('.us { -webkit-text-decoration: underline line-throught;}');
+
+  rows.push('.u1 { -webkit-text-decoration-style: solid;}');
+  rows.push('.u2 { -webkit-text-decoration-style: double;}');
+  rows.push('.u3 { -webkit-text-decoration-style: wavy;}');
+  rows.push('.u4 { -webkit-text-decoration-style: dotted;}');
+  rows.push('.u5 { -webkit-text-decoration-style: dashed;}');
+
   rows.push('span.b { font-weight: bold;}');
   rows.push('span.i { font-style: italic;}');
   rows.push('span.wc { display: inline-block; overflow-x:hidden; }');
@@ -335,9 +341,13 @@ function __generateClassName(attrs: hterm.TextAttributes): string {
     result.push(__bl);
   }
   if (attrs.underline) {
-    result.push(__u[attrs.underline]);
-  }
-  if (attrs.strikethrough) {
+    if (attrs.strikethrough) {
+      result.push(__us);
+    } else {
+      result.push(__u);
+    }
+    result.push(__uu[attrs.underline]);
+  } else if (attrs.strikethrough) {
     result.push(__s);
   }
   if (attrs.invisible) {
