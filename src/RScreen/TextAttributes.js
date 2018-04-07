@@ -273,7 +273,7 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
     rows.push('span.uc' + i + ' { -webkit-text-decoration-color: ' + color + ';}');
   }
   rows.push('.u { -webkit-text-decoration: underline;}');
-  rows.push('.s { -webkit-text-decoration: line-throught;}');
+  rows.push('.s { -webkit-text-decoration: line-through;}');
   rows.push('.us { -webkit-text-decoration: underline line-throught;}');
 
   rows.push('.u1 { -webkit-text-decoration-style: solid;}');
