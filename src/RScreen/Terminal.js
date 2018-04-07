@@ -524,6 +524,7 @@ hterm.Terminal.prototype.eraseBelow = function() {
 hterm.Terminal.prototype.print = function(str) {
   var startOffset = 0;
 
+  str = [str].join('');
   var strWidth = lib.wc.strWidth(str);
   // Fun edge case: If the string only contains zero width codepoints (like
   // combining characters), we make sure to iterate at least once below.

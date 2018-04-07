@@ -45,14 +45,14 @@ export function setNodeText(node: RNodeType, text: string, wcwidth?: number) {
 }
 
 export function setNodeAttributedText(
-  attrs: hterm.TextAttributes | RAttributesType,
+  attrs: RAttributesType,
   node: RNodeType,
   text: string,
   wcwidth?: number,
 ) {
   node.txt = text;
   if (node.attrs.asciiNode !== attrs.asciiNode && !attrs.asciiNode) {
-    node.attrs = attrs.attrs ? attrs.attrs() : attrs;
+    node.attrs = attrs;
   }
   if (wcwidth != null) {
     node.wcw = wcwidth;
@@ -81,6 +81,28 @@ export function createNode(text: string, wcwidth: number): RNodeType {
     wcw: wcwidth,
     key: genKey(),
     attrs: __defaultAttributes(),
+  };
+}
+
+export function createAttributedNode(
+  attrs: RAttributesType,
+  txt: string,
+  wcw: number | void,
+): RNodeType {
+  if (wcw === undefined) {
+    if (attrs.asciiNode) {
+      wcw = txt.length;
+    } else {
+      wcw = lib.wc.strWidth(txt);
+    }
+  }
+
+  return {
+    v: 0,
+    txt,
+    wcw,
+    key: genKey(),
+    attrs,
   };
 }
 
@@ -121,32 +143,11 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
   const attrsHash = __attrsHash(attrs);
   var cachedAttrs = __attrsMap.get(attrsHash);
   if (cachedAttrs) {
-    attrs = cachedAttrs;
+    return cachedAttrs;
   } else if (__attrsMap.size < 5000) {
     __attrsMap.set(attrsHash, attrs);
   }
   return attrs;
-};
-
-hterm.TextAttributes.prototype.createNode = function(
-  txt: string,
-  wcw: number | void,
-): RNodeType {
-  if (wcw === undefined) {
-    if (this.asciiNode) {
-      wcw = txt.length;
-    } else {
-      wcw = lib.wc.strWidth(txt);
-    }
-  }
-
-  return {
-    v: 0,
-    txt,
-    wcw,
-    key: genKey(),
-    attrs: this.attrs(),
-  };
 };
 
 hterm.TextAttributes.prototype.reset = function() {
@@ -358,6 +359,10 @@ function __generateClassName(attrs: hterm.TextAttributes): string {
 }
 
 export function nodeMatchesAttrs(node: RNodeType, attrs: RAttributesType) {
+  if (attrs === node.attrs && !attrs.wcNode) {
+    return true;
+  }
+
   if (attrs.isDefault) {
     return node.attrs.isDefault;
   }
@@ -373,32 +378,6 @@ export function nodeMatchesAttrs(node: RNodeType, attrs: RAttributesType) {
     node.attrs.uri == attrs.uri
   );
 }
-
-hterm.TextAttributes.prototype.matchesNode = function(
-  node: RNodeType,
-): boolean {
-  var attrs = node.attrs;
-
-  if (attrs.isDefault) {
-    return this.isDefault();
-  }
-
-  // We don't want to put multiple characters in a wcNode or a tile.
-  // See the comments in createNode.
-  // For attributes that default to false, we do not require that obj have them
-  // declared, so always normalize them using !! (to turn undefined into false)
-  // in the compares below.
-  return (
-    !(this.wcNode || attrs.wcNode) &&
-    //!(this.tileData != null || attrs.tileData) &&
-    this.className === attrs.className &&
-    this.fc === attrs.fc &&
-    this.bc === attrs.bc &&
-    this.uc === attrs.uc &&
-    this.uriId == attrs.uriId &&
-    this.uri == attrs.uri
-  );
-};
 
 hterm.TextAttributes.splitWidecharString = function(str) {
   var rv = [];
