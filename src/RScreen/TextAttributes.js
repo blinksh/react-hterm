@@ -253,7 +253,6 @@ var __u = {
 }; // underline
 var __i = 'i'; // italic
 var __invisible = 'invbl'; // invisible
-var __wc = 'wcNode'; // widechar
 
 for (var i = 0; i < 256; i++) {
   __c[i] = 'c' + i;
@@ -341,10 +340,6 @@ function __generateClassName(attrs: hterm.TextAttributes): string {
   }
   if (attrs.invisible) {
     result.push(__invisible);
-  }
-
-  if (attrs.wcNode) {
-    result.push(__wc);
   }
 
   if (result.length) {
