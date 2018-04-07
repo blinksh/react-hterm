@@ -45,14 +45,14 @@ export function setNodeText(node: RNodeType, text: string, wcwidth?: number) {
 }
 
 export function setNodeAttributedText(
-  attrs: hterm.TextAttributes,
+  attrs: hterm.TextAttributes | RAttributesType,
   node: RNodeType,
   text: string,
   wcwidth?: number,
 ) {
   node.txt = text;
   if (node.attrs.asciiNode !== attrs.asciiNode && !attrs.asciiNode) {
-    node.attrs = { ...node.attrs, asciiNode: attrs.asciiNode };
+    node.attrs = attrs.attrs ? attrs.attrs() : attrs;
   }
   if (wcwidth != null) {
     node.wcw = wcwidth;
@@ -97,54 +97,55 @@ hterm.TextAttributes.prototype.resetColorPalette = function() {
   this.syncColors();
 };
 
-hterm.TextAttributes.prototype.createNode = function(
-  text: string,
-  wcwidth: number | void,
-): RNodeType {
-  var attrs;
+hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
   if (this.isDefault()) {
-    attrs = __defaultAttrs;
-  } else {
-    attrs = __defaultAttributes();
-
-    attrs.isDefault = false;
-    attrs.wcNode = this.wcNode;
-    attrs.asciiNode = this.asciiNode;
-
-    if (this.uri) {
-      attrs.uri = this.uri;
-    }
-    if (this.uriId) {
-      attrs.uriId = this.uriId;
-    }
-    attrs.className = this.className;
-    attrs.fc = this.fc;
-    attrs.bc = this.bc;
-    attrs.uc = this.uc;
-
-    const attrsHash = __attrsHash(attrs);
-    var cachedAttrs = __attrsMap.get(attrsHash);
-    if (cachedAttrs) {
-      attrs = cachedAttrs;
-    } else if (__attrsMap.size < 5000) {
-      __attrsMap.set(attrsHash, attrs);
-    }
+    return __defaultAttrs;
   }
+  var attrs = __defaultAttributes();
 
-  if (wcwidth === undefined) {
+  attrs.isDefault = false;
+  attrs.wcNode = this.wcNode;
+  attrs.asciiNode = this.asciiNode;
+
+  if (this.uri) {
+    attrs.uri = this.uri;
+  }
+  if (this.uriId) {
+    attrs.uriId = this.uriId;
+  }
+  attrs.className = this.className;
+  attrs.fc = this.fc;
+  attrs.bc = this.bc;
+  attrs.uc = this.uc;
+
+  const attrsHash = __attrsHash(attrs);
+  var cachedAttrs = __attrsMap.get(attrsHash);
+  if (cachedAttrs) {
+    attrs = cachedAttrs;
+  } else if (__attrsMap.size < 5000) {
+    __attrsMap.set(attrsHash, attrs);
+  }
+  return attrs;
+};
+
+hterm.TextAttributes.prototype.createNode = function(
+  txt: string,
+  wcw: number | void,
+): RNodeType {
+  if (wcw === undefined) {
     if (this.asciiNode) {
-      wcwidth = text.length;
+      wcw = txt.length;
     } else {
-      wcwidth = lib.wc.strWidth(text);
+      wcw = lib.wc.strWidth(txt);
     }
   }
 
   return {
     v: 0,
-    txt: text,
-    wcw: wcwidth,
+    txt,
+    wcw,
     key: genKey(),
-    attrs,
+    attrs: this.attrs(),
   };
 };
 
@@ -238,7 +239,7 @@ hterm.TextAttributes.prototype.syncColors = function() {
   this.className = __generateClassName(this);
 };
 
-var __c = []; // foreground color
+var __fc = []; // foreground color
 var __bc = []; // background color
 var __uc = []; // underline color
 var __b = 'b'; // bold
@@ -255,7 +256,7 @@ var __i = 'i'; // italic
 var __invisible = 'invbl'; // invisible
 
 for (var i = 0; i < 256; i++) {
-  __c[i] = 'c' + i;
+  __fc[i] = 'c' + i;
   __bc[i] = 'bc' + i;
   __uc[i] = 'uc' + i;
 }
@@ -299,7 +300,7 @@ function __generateClassName(attrs: hterm.TextAttributes): string {
   ) {
     attrs.fc = attrs.foreground;
   } else {
-    result.push(__c[attrs.foreground]);
+    result.push(__fc[attrs.foreground]);
     attrs.fc = __defaultColor;
   }
 
@@ -365,9 +366,9 @@ export function nodeMatchesAttrs(node: RNodeType, attrs: RAttributesType) {
     !(node.attrs.wcNode || attrs.wcNode) &&
     //!(this.tileData != null || attrs.tileData) &&
     node.attrs.className === attrs.className &&
-    node.attrs.fc == attrs.fc &&
-    node.attrs.bc == attrs.bc &&
-    node.attrs.uc == attrs.uc &&
+    node.attrs.fc === attrs.fc &&
+    node.attrs.bc === attrs.bc &&
+    node.attrs.uc === attrs.uc &&
     node.attrs.uriId == attrs.uriId &&
     node.attrs.uri == attrs.uri
   );
@@ -391,9 +392,9 @@ hterm.TextAttributes.prototype.matchesNode = function(
     !(this.wcNode || attrs.wcNode) &&
     //!(this.tileData != null || attrs.tileData) &&
     this.className === attrs.className &&
-    this.fc == attrs.fc &&
-    this.bc == attrs.bc &&
-    this.uc == attrs.uc &&
+    this.fc === attrs.fc &&
+    this.bc === attrs.bc &&
+    this.uc === attrs.uc &&
     this.uriId == attrs.uriId &&
     this.uri == attrs.uri
   );
