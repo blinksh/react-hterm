@@ -2,9 +2,9 @@
 
 export type RAttributesType = {|
   isDefault: boolean,
-  fc: string | number,
-  bc: string | number,
-  uc: string | number,
+  fc: string,
+  bc: string,
+  uc: string,
   className: string,
   wcNode: boolean,
   asciiNode: boolean,

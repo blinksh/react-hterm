@@ -293,10 +293,8 @@ test('wide-to-narrow-char-start', () => {
   _screen.setCursorPosition(0, 2);
 
   _screen.overwriteString('x', 1);
-  expect(row.nodes[0].txt).toEqual('abx');
-  expect(row.nodes[1].txt).toEqual(' ');
-  expect(row.nodes[2].txt).toEqual('ef');
-  expect(row.nodes.length).toEqual(3);
+  expect(row.nodes[0].txt).toEqual('abx ef');
+  expect(row.nodes.length).toEqual(1);
 });
 
 test('wide-to-narrow-char-end', () => {
@@ -485,9 +483,8 @@ test('overwrite', () => {
   _screen.setCursorPosition(0, 3);
   _screen.overwriteString('XXXXX', 5);
 
-  expect(ary[0].nodes[0].txt).toEqual('helXXXXX');
-  expect(ary[0].nodes[1].txt).toEqual('rld');
-  expect(ary[0].nodes.length).toEqual(2);
+  expect(ary[0].nodes[0].txt).toEqual('helXXXXXrld');
+  expect(ary[0].nodes.length).toEqual(1);
 
   _screen.setCursorPosition(1, 0);
   _screen.overwriteString('XXXXX', 5);

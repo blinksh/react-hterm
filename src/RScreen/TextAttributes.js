@@ -51,11 +51,8 @@ export function setNodeAttributedText(
   wcwidth?: number,
 ) {
   node.txt = text;
-  if (attrs && node.attrs.asciiNode !== attrs.asciiNode) {
-    if (node.attrs === __defaultAttrs) {
-      node.attrs = { ...__defaultAttrs };
-    }
-    node.attrs.asciiNode = node.attrs.asciiNode && attrs.asciiNode;
+  if (node.attrs.asciiNode !== attrs.asciiNode && !attrs.asciiNode) {
+    node.attrs = { ...node.attrs, asciiNode: attrs.asciiNode };
   }
   if (wcwidth != null) {
     node.wcw = wcwidth;
@@ -362,6 +359,23 @@ function __generateClassName(attrs: hterm.TextAttributes): string {
     return name;
   }
   return __defaultClassName;
+}
+
+export function nodeMatchesAttrs(node: RNodeType, attrs: RAttributesType) {
+  if (attrs.isDefault) {
+    return node.attrs.isDefault;
+  }
+
+  return (
+    !(node.attrs.wcNode || attrs.wcNode) &&
+    //!(this.tileData != null || attrs.tileData) &&
+    node.attrs.className === attrs.className &&
+    node.attrs.fc == attrs.fc &&
+    node.attrs.bc == attrs.bc &&
+    node.attrs.uc == attrs.uc &&
+    node.attrs.uriId == attrs.uriId &&
+    node.attrs.uri == attrs.uri
+  );
 }
 
 hterm.TextAttributes.prototype.matchesNode = function(

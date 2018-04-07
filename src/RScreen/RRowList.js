@@ -14,17 +14,18 @@ export default class RRowList extends React.Component<*> {
     const rows = this._rows;
     const len = rows.length;
     const elements = new Array(len);
-    this._rowsMap = new Map();
+    const rowsMap = new Map();
     for (var i = 0; i < len; i++) {
       const row = rows[i];
       const ref = React.createRef();
-      this._rowsMap.set(row.key, ref);
+      rowsMap.set(row.key, ref);
       elements[i] = React.createElement(RRow, {
         key: row.key,
-        ref: ref,
-        row: row,
+        ref,
+        row,
       });
     }
+    this._rowsMap = rowsMap;
     this._dirty = false;
     return elements;
   }
@@ -41,15 +42,12 @@ export default class RRowList extends React.Component<*> {
     }
   }
 
-  _touch = () => this.forceUpdate();
-
   touch() {
     if (this._dirty) {
       return;
     }
 
     this._dirty = true;
-    this._touch();
-    //ReactDOM.unstable_deferredUpdates(this._touch);
+    this.forceUpdate();
   }
 }

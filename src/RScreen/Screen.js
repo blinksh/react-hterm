@@ -7,6 +7,7 @@ import {
   createDefaultNode,
   setNodeText,
   setNodeAttributedText,
+  nodeMatchesAttrs,
 } from './TextAttributes';
 
 import { hterm, lib } from '../hterm_all.js';
@@ -222,6 +223,32 @@ hterm.Screen.prototype.maybeClipCurrentRow = function() {
     this.cursorPosition.overflow = true;
   }
 };
+
+function __flattenNodes(row: RRowType, startNodeIdx: number) {
+  var len = row.nodes.length;
+  var spliceCount = 0;
+  var startNode = row.nodes[startNodeIdx];
+  var text = startNode.txt;
+  var attrs = startNode.attrs;
+  var idx = startNodeIdx + 1;
+  var node = row.nodes[idx];
+
+  while (node && nodeMatchesAttrs(node, attrs)) {
+    text += node.txt;
+    if (!node.attrs.asciiNode) {
+      attrs = node.attrs;
+    }
+    spliceCount++;
+    idx++;
+    node = row.nodes[idx];
+  }
+
+  if (spliceCount > 0) {
+    setNodeAttributedText(attrs, startNode, text);
+    row.nodes.splice(startNodeIdx + 1, spliceCount);
+    touch(row);
+  }
+}
 
 hterm.Screen.prototype.overwriteNode = function(
   str: string,
@@ -649,6 +676,7 @@ hterm.Screen.prototype.overwriteString = function(
   if (wcwidthLeft > 0) {
     this.deleteChars(wcwidthLeft);
   }
+  __flattenNodes(cursorRowNode, this.cursorNodeIdx_);
   touch(cursorRowNode);
 };
 
