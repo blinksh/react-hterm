@@ -127,6 +127,9 @@ hterm.Terminal.prototype.decorate = function(div) {
 
   this.cursorOverlayNode_.appendChild(this.cursorNode_);
 
+  this.ime_ = this.document_.createElement('ime');
+  this.cursorOverlayNode_.appendChild(this.ime_);
+
   // When 'enableMouseDragScroll' is off we reposition this element directly
   // under the mouse cursor after a click.  This makes Chrome associate
   // subsequent mousemove events with the scroll-blocker.  Since the
@@ -588,4 +591,27 @@ hterm.Terminal.prototype.print = function(str) {
 hterm.Terminal.prototype.interpret = function(str) {
   this.vt.interpret(str);
   // this.scheduleSyncCursorPosition_();
+};
+
+hterm.Terminal.prototype.setFontSize = function(px) {
+  if (px <= 0) px = this.prefs_.get('font-size');
+
+  if (this.cursorOverlayNode_) {
+    this.cursorOverlayNode_.style.fontSize = px + 'px';
+  }
+  this.scrollPort_.setFontSize(px);
+  this.setCssVar('charsize-width', this.scrollPort_.characterSize.width + 'px');
+  this.setCssVar(
+    'charsize-height',
+    this.scrollPort_.characterSize.height + 'px',
+  );
+};
+
+hterm.Terminal.prototype.syncFontFamily = function() {
+  const fontFamily = this.prefs_.get('font-family');
+  if (this.cursorOverlayNode_) {
+    this.cursorOverlayNode_.style.fontFamily = fontFamily;
+  }
+  this.scrollPort_.setFontFamily(fontFamily, this.prefs_.get('font-smoothing'));
+  this.syncBoldSafeState();
 };

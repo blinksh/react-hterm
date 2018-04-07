@@ -16,9 +16,9 @@ export default class RRow extends Component<PropsType> {
   render() {
     this._v = this.props.row.v;
 
-    let nodes = this.props.row.nodes;
-    let len = nodes.length;
-    let elements = new Array(len);
+    const nodes = this.props.row.nodes;
+    const len = nodes.length;
+    const elements = new Array(len);
     for (let i = 0; i < len; i++) {
       const node = nodes[i];
       elements[i] = React.createElement(RNode, { key: node.key, node });
