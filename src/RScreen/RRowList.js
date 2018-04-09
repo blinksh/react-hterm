@@ -15,16 +15,15 @@ export default class RRowList extends React.Component<*> {
     const len = rows.length;
     const elements = new Array(len);
     const rowsMap = new Map();
-    for (var i = 0; i < len; i++) {
+
+    for (let i = 0; i < len; i++) {
       const row = rows[i];
+      const key = row.key;
       const ref = React.createRef();
-      rowsMap.set(row.key, ref);
-      elements[i] = React.createElement(RRow, {
-        key: row.key,
-        ref,
-        row,
-      });
+      elements[i] = React.createElement(RRow, { key, ref, row });
+      rowsMap.set(key, ref);
     }
+
     this._rowsMap = rowsMap;
     this._dirty = false;
     return elements;

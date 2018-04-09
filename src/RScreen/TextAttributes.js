@@ -51,7 +51,7 @@ export function setNodeAttributedText(
   wcwidth?: number,
 ) {
   node.txt = text;
-  if (node.attrs.asciiNode !== attrs.asciiNode && !attrs.asciiNode) {
+  if (!attrs.asciiNode && node.attrs.asciiNode) {
     node.attrs = attrs;
   }
   if (wcwidth != null) {
@@ -270,7 +270,9 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
     var color = attrs.colorPalette[i];
     rows.push('span.c' + i + ' { color: ' + color + ';}');
     rows.push('span.bc' + i + ' { background: ' + color + ';}');
-    rows.push('span.uc' + i + ' { -webkit-text-decoration-color: ' + color + ';}');
+    rows.push(
+      'span.uc' + i + ' { -webkit-text-decoration-color: ' + color + ';}',
+    );
   }
   rows.push('.u { -webkit-text-decoration: underline;}');
   rows.push('.s { -webkit-text-decoration: line-through;}');

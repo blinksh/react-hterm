@@ -234,12 +234,14 @@ function __flattenNodes(row: RRowType, startNodeIdx: number) {
   var spliceCount = 0;
   var startNode = row.nodes[startNodeIdx];
   var text = startNode.txt;
+  var wcw = startNode.wcw;
   var attrs = startNode.attrs;
   var idx = startNodeIdx + 1;
   var node = row.nodes[idx];
 
   while (node && nodeMatchesAttrs(node, attrs)) {
     text += node.txt;
+    wcw += node.wcw;
     if (!node.attrs.asciiNode) {
       attrs = node.attrs;
     }
@@ -249,7 +251,7 @@ function __flattenNodes(row: RRowType, startNodeIdx: number) {
   }
 
   if (spliceCount > 0) {
-    setNodeAttributedText(attrs, startNode, text);
+    setNodeAttributedText(attrs, startNode, text, wcw);
     row.nodes.splice(startNodeIdx + 1, spliceCount);
     touch(row);
   }
