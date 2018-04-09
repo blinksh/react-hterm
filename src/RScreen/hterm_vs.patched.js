@@ -320,6 +320,24 @@ hterm.VT.prototype.parseCSI_ = function(parseState) {
 
 var _VTMaps: Map<string, Map<string, Function>> = new Map();
 
+function __parseESC(parseState) {
+  var ch = parseState.consumeChar();
+
+  if (ch == '\x1b') {
+    return;
+  }
+
+  this.dispatch('ESC', ch, parseState);
+
+  if (parseState.func == __parseESC) {
+    parseState.resetParseFunction();
+  }
+}
+
+hterm.VT.CC1['\x1b'] = function(parseState) {
+  parseState.func = __parseESC;
+};
+
 ['CC1', 'ESC', 'CSI', 'OSC', 'VT52'].forEach(type => {
   var map: Map<string, Function> = new Map();
   var obj = hterm.VT[type];

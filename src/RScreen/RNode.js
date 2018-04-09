@@ -26,15 +26,15 @@ export default class RNode extends Component<PropsType> {
     // if colors < 256 we have them in className
     // otherwise set them with style
     var style = null;
-    if (attrs.fc != '') {
+    if (attrs.fc !== '') {
       style = style || {};
       style.color = node.attrs.fc;
     }
-    if (attrs.bc != '') {
+    if (attrs.bc !== '') {
       style = style || {};
       style.backgroundColor = node.attrs.bc;
     }
-    if (attrs.uc != '') {
+    if (attrs.uc !== '') {
       style = style || {};
       style.textDecorationColor = node.attrs.uc;
     }
