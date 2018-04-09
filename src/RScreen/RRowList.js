@@ -36,6 +36,10 @@ export default class RRowList extends React.Component<*> {
   }
 
   touchRow(row: RRowType) {
+    if (this._dirty) {
+      return;
+    }
+
     let ref = this._rowsMap.get(row.key);
     if (ref && ref.current) {
       ref.current.touch();
