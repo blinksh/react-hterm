@@ -334,6 +334,156 @@ function __parseESC(parseState) {
   }
 }
 
+hterm.VT.ParseState.prototype.resetArguments = function() {
+  this.args.length = 0;
+  //if (typeof opt_arg_zero != 'undefined') this.args[0] = opt_arg_zero;
+};
+
+hterm.VT.ParseState.prototype.parseInt = function(argstr, defaultValue) {
+  const ret = argstr >> 0;
+  if (ret === 0) {
+    if (defaultValue === undefined) {
+      defaultValue = 0;
+    }
+    return defaultValue;
+  }
+
+  return ret;
+};
+
+hterm.VT.prototype.parseSgrExtendedColors = function(parseState, i, attrs) {
+  let ary;
+  let usedSubargs;
+
+  if (parseState.argHasSubargs(i)) {
+    // The ISO 8613-6 compliant form.
+    // e.g. 38:[color choice]:[arg1]:[arg2]:...
+    ary = parseState.args[i].split(':');
+    ary.shift(); // Remove "38".
+    usedSubargs = true;
+  } else if (parseState.argHasSubargs(i + 1)) {
+    // The xterm form which isn't ISO 8613-6 compliant.  Not many emulators
+    // support this, and others actively do not want to.  We'll ignore it so
+    // at least the rest of the stream works correctly.  e.g. 38;2:R:G:B
+    // We return 0 here so we only skip the "38" ... we can't be confident the
+    // next arg is actually supposed to be part of it vs a typo where the next
+    // arg is legit.
+    return { skipCount: 0 };
+  } else {
+    // The xterm form which isn't ISO 8613-6 compliant, but many emulators
+    // support, and many applications rely on.
+    // e.g. 38;2;R;G;B
+    ary = parseState.args.slice(i + 1);
+    usedSubargs = false;
+  }
+
+  // Figure out which form to parse.
+  switch (ary[0] >> 0) {
+    default: // Unknown.
+    case 0: // Implementation defined.  We ignore it.
+      return { skipCount: 0 };
+
+    case 1: {
+      // Transparent color.
+      // Require ISO 8613-6 form.
+      if (!usedSubargs) return { skipCount: 0 };
+
+      return {
+        color: 'rgba(0, 0, 0, 0)',
+        skipCount: 0,
+      };
+    }
+
+    case 2: {
+      // RGB color.
+      // Skip over the color space identifier, if it exists.
+      let start;
+      if (usedSubargs) {
+        // The ISO 8613-6 compliant form:
+        //   38:2:<color space id>:R:G:B[:...]
+        // The xterm form isn't ISO 8613-6 compliant.
+        //   38:2:R:G:B
+        // Since the ISO 8613-6 form requires at least 5 arguments,
+        // we can still support the xterm form unambiguously.
+        if (ary.length == 4) start = 1;
+        else start = 2;
+      } else {
+        // The legacy xterm form: 38;2;R;G;B
+        start = 1;
+      }
+
+      // We need at least 3 args for RGB.  If we don't have them, assume this
+      // sequence is corrupted, so don't eat anything more.
+      // We ignore more than 3 args on purpose since ISO 8613-6 defines some,
+      // and we don't care about them.
+      if (ary.length < start + 3) return { skipCount: 0 };
+
+      const r = ary[start + 0] >> 0;
+      const g = ary[start + 1] >> 0;
+      const b = ary[start + 2] >> 0;
+      return {
+        color: `rgb(${r}, ${g}, ${b})`,
+        skipCount: usedSubargs ? 0 : 4,
+      };
+    }
+
+    case 3: {
+      // CMY color.
+      // No need to support xterm/legacy forms as xterm doesn't support CMY.
+      if (!usedSubargs) return { skipCount: 0 };
+
+      // We need at least 4 args for CMY.  If we don't have them, assume
+      // this sequence is corrupted.  We ignore the color space identifier,
+      // tolerance, etc...
+      if (ary.length < 4) return { skipCount: 0 };
+
+      // TODO: See CMYK below.
+      const c = ary[1] >> 0;
+      const m = ary[2] >> 0;
+      const y = ary[3] >> 0;
+      return { skipCount: 0 };
+    }
+
+    case 4: {
+      // CMYK color.
+      // No need to support xterm/legacy forms as xterm doesn't support CMYK.
+      if (!usedSubargs) return { skipCount: 0 };
+
+      // We need at least 5 args for CMYK.  If we don't have them, assume
+      // this sequence is corrupted.  We ignore the color space identifier,
+      // tolerance, etc...
+      if (ary.length < 5) return { skipCount: 0 };
+
+      // TODO: Implement this.
+      // Might wait until CSS4 is adopted for device-cmyk():
+      // https://www.w3.org/TR/css-color-4/#cmyk-colors
+      // Or normalize it to RGB ourselves:
+      // https://www.w3.org/TR/css-color-4/#cmyk-rgb
+      const c = ary[1] >> 0;
+      const m = ary[2] >> 0;
+      const y = ary[3] >> 0;
+      const k = ary[4] >> 0;
+      return { skipCount: 0 };
+    }
+
+    case 5: {
+      // Color palette index.
+      // If we're short on args, assume this sequence is corrupted, so don't
+      // eat anything more.
+      if (ary.length < 2) return { skipCount: 0 };
+
+      // Support 38:5:P (ISO 8613-6) and 38;5;P (xterm/legacy).
+      // We also ignore extra args with 38:5:P:[...], but more for laziness.
+      const ret = {
+        skipCount: usedSubargs ? 0 : 2,
+      };
+      const color = ary[1] >> 0;
+      if (color < attrs.colorPalette.length) ret.color = color;
+      return ret;
+    }
+  }
+};
+
 hterm.VT.CC1['\x1b'] = function(parseState) {
   parseState.func = __parseESC;
 };

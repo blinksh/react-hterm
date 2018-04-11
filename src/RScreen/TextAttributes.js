@@ -119,6 +119,17 @@ hterm.TextAttributes.prototype.resetColorPalette = function() {
   this.syncColors();
 };
 
+function __getBrightIndex(i) {
+  if (i < 8) {
+    // If the color is from the lower half of the ANSI 16, add 8.
+    return i + 8;
+  }
+
+  // If it's not from the 16 color palette, ignore bold requests.  This
+  // matches the behavior of gnome-terminal.
+  return i;
+}
+
 hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
   if (this.isDefault()) {
     return __defaultAttrs;
@@ -135,7 +146,7 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
   if (this.uriId) {
     attrs.uriId = this.uriId;
   }
-  attrs.className = this.className;
+  attrs.className = __generateClassName(this);
   attrs.fc = this.fc;
   attrs.bc = this.bc;
   attrs.uc = this.uc;
@@ -149,39 +160,6 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
   }
   return attrs;
 };
-
-hterm.TextAttributes.prototype.reset = function() {
-  this.foregroundSource = this.SRC_DEFAULT;
-  this.backgroundSource = this.SRC_DEFAULT;
-  this.underlineSource = this.SRC_DEFAULT;
-  this.foreground = this.DEFAULT_COLOR;
-  this.background = this.DEFAULT_COLOR;
-  this.underlineColor = this.DEFAULT_COLOR;
-  this.bold = false;
-  this.faint = false;
-  this.italic = false;
-  this.blink = false;
-  this.underline = false;
-  this.strikethrough = false;
-  this.inverse = false;
-  this.invisible = false;
-  this.wcNode = false;
-  this.asciiNode = true;
-  this.uri = null;
-  this.uriId = null;
-  this.className = __defaultClassName;
-};
-
-function __getBrightIndex(i) {
-  if (i < 8) {
-    // If the color is from the lower half of the ANSI 16, add 8.
-    return i + 8;
-  }
-
-  // If it's not from the 16 color palette, ignore bold requests.  This
-  // matches the behavior of gnome-terminal.
-  return i;
-}
 
 hterm.TextAttributes.prototype.syncColors = function() {
   var foregroundSource = this.foregroundSource;
@@ -236,8 +214,6 @@ hterm.TextAttributes.prototype.syncColors = function() {
   } else {
     this.underlineColor = this.underlineSource;
   }
-
-  this.className = __generateClassName(this);
 };
 
 var __fc = []; // foreground color
@@ -391,16 +367,153 @@ export function nodeMatchesAttrs(node: RNodeType, attrs: RAttributesType) {
   );
 }
 
+hterm.TextAttributes.prototype.isDefault = function(): boolean {
+  // Reorder
+  return (
+    this.asciiNode &&
+    !this.wcNode &&
+    !this.bold &&
+    this.foregroundSource == this.SRC_DEFAULT &&
+    this.backgroundSource == this.SRC_DEFAULT &&
+    !this.faint &&
+    !this.italic &&
+    !this.blink &&
+    !this.underline &&
+    !this.strikethrough &&
+    !this.inverse &&
+    !this.invisible &&
+    this.tileData == null &&
+    this.uri == null
+  );
+};
+
+var _nonASCIIRegex = /[^\x00-\x7F]/;
+
+hterm.TextAttributes.splitWidecharStringBack = function(str) {
+  var rv = [];
+  var base = 0,
+    length = 0,
+    wcStrWidth = 0,
+    wcCharWidth;
+  var asciiNode = true;
+  var len = str.length;
+  var i = 0;
+  var idx = str.search(_nonASCIIRegex);
+  if (idx > 1) {
+    rv.push({
+      str: str.substr(0, idx),
+      wcNode: false,
+      asciiNode: true,
+      wcStrWidth: idx,
+    });
+    i = idx;
+  } else if (idx === -1) {
+    return [
+      {
+        str: str,
+        wcNode: false,
+        asciiNode: true,
+        wcStrWidth: str.length,
+      },
+    ];
+  }
+  while (i < len) {
+    var c = str.codePointAt(i);
+    var increment;
+    if (c < 128) {
+      var substr = str.substr(i);
+      idx = substr.search(_nonASCIIRegex);
+      if (idx === -1) {
+        rv.push({
+          str: substr,
+          wcNode: false,
+          asciiNode: true,
+          wcStrWidth: substr.length,
+        });
+        return rv;
+      } else {
+        increment = idx;
+        wcStrWidth = 0;
+        length = 0;
+        rv.push({
+          str: substr.substr(0, idx),
+          wcNode: false,
+          asciiNode: true,
+          wcStrWidth: idx,
+        });
+      }
+    } else {
+      increment = c <= 0xffff ? 1 : 2;
+      wcCharWidth = lib.wc.charWidth(c);
+      if (wcCharWidth <= 1) {
+        wcStrWidth += wcCharWidth;
+        length += increment;
+        asciiNode = false;
+      } else {
+        if (length) {
+          rv.push({
+            str: str.substr(base, length),
+            wcNode: false,
+            asciiNode: asciiNode,
+            wcStrWidth: wcStrWidth,
+          });
+          asciiNode = true;
+          wcStrWidth = 0;
+        }
+        rv.push({
+          str: str.substr(i, increment),
+          wcNode: true,
+          asciiNode: false,
+          wcStrWidth: 2,
+        });
+        base = i + increment;
+        length = 0;
+      }
+    }
+    i += increment;
+  }
+
+  if (length) {
+    rv.push({
+      str: str.substr(base, length),
+      wcNode: false,
+      asciiNode: asciiNode,
+      wcStrWidth: wcStrWidth,
+    });
+  }
+
+  return rv;
+};
+
 hterm.TextAttributes.splitWidecharString = function(str) {
   var rv = [];
   var base = 0,
     length = 0,
     wcStrWidth = 0,
-    len = str.length,
     wcCharWidth;
   var asciiNode = true;
-
-  for (var i = 0; i < len; ) {
+  var len = str.length;
+  var i = 0;
+  var idx = str.search(_nonASCIIRegex);
+  if (idx > 1) {
+    rv.push({
+      str: str.substr(0, idx),
+      wcNode: false,
+      asciiNode: true,
+      wcStrWidth: idx,
+    });
+    i = idx;
+  } else if (idx === -1) {
+    return [
+      {
+        str: str,
+        wcNode: false,
+        asciiNode: true,
+        wcStrWidth: str.length,
+      },
+    ];
+  }
+  while (i < len) {
     var c = str.codePointAt(i);
     var increment;
     if (c < 128) {
@@ -450,21 +563,74 @@ hterm.TextAttributes.splitWidecharString = function(str) {
   return rv;
 };
 
-hterm.TextAttributes.prototype.isDefault = function() {
-  return (
-    this.foregroundSource === this.SRC_DEFAULT &&
-    this.backgroundSource === this.SRC_DEFAULT &&
-    !this.bold &&
-    !this.faint &&
-    !this.italic &&
-    !this.blink &&
-    !this.underline &&
-    !this.strikethrough &&
-    !this.inverse &&
-    !this.invisible &&
-    !this.wcNode &&
-    this.asciiNode &&
-    this.tileData == null &&
-    this.uri == null
-  );
+lib.wc.substr = function(str, start, opt_width) {
+  if (!_nonASCIIRegex.test(str)) {
+    return str.substr(start, opt_width);
+  }
+
+  var startIndex = 0;
+  var endIndex, width;
+
+  // Fun edge case: Normally we associate zero width codepoints (like combining
+  // characters) with the previous codepoint, so we skip any leading ones while
+  // including trailing ones.  However, if there are zero width codepoints at
+  // the start of the string, and the substring starts at 0, lets include them
+  // in the result.  This also makes for a simple optimization for a common
+  // request.
+  if (start) {
+    for (width = 0; startIndex < str.length; ) {
+      const codePoint = str.codePointAt(startIndex);
+      width += lib.wc.charWidth(codePoint);
+      if (width > start) break;
+      startIndex += codePoint <= 0xffff ? 1 : 2;
+    }
+  }
+
+  if (opt_width != undefined) {
+    for (endIndex = startIndex, width = 0; endIndex < str.length; ) {
+      const codePoint = str.codePointAt(endIndex);
+      width += lib.wc.charWidth(codePoint);
+      if (width > opt_width) break;
+      endIndex += codePoint <= 0xffff ? 1 : 2;
+    }
+    return str.substring(startIndex, endIndex);
+  }
+
+  return str.substr(startIndex);
+};
+
+lib.wc.strWidth = function(str) {
+  if (!_nonASCIIRegex.test(str)) {
+    return str.length;
+  }
+
+  var width,
+    rv = 0;
+
+  for (var i = 0, len = str.length; i < len; ) {
+    var codePoint = str.codePointAt(i);
+    width = lib.wc.charWidth(codePoint);
+    if (width < 0) return -1;
+    rv += width;
+    i += codePoint <= 0xffff ? 1 : 2;
+  }
+
+  return rv;
+};
+
+let __charCache: Map<number, number> = new Map();
+
+var __charWidth = lib.wc.charWidth;
+
+lib.wc.charWidth = function(ucs: number): number {
+  let res = __charCache.get(ucs);
+  if (res === undefined) {
+    res = __charWidth(ucs);
+    if (__charCache.size > 200000) {
+      __charCache = new Map();
+    }
+    __charCache.set(ucs, res);
+  }
+
+  return res;
 };
