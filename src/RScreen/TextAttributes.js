@@ -141,7 +141,7 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
     attrs.bcs = this.background;
   }
 
-  if (typeof this.underlineColor !== 'number') {
+  if (typeof this.underlineColor === 'number') {
     attrs.uci = this.underlineColor;
   } else if (this.underlineColor !== this.DEFAULT_COLOR) {
     attrs.ucs = this.underlineColor;
