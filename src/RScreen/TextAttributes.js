@@ -2,6 +2,7 @@
 import type { RNodeType, RAttributesType } from './model';
 import { hterm, lib } from '../hterm_all.js';
 import { genKey, touch } from './utils';
+import { WC_PRECALCULATED_CLASSES } from './RNode'
 
 var __cssStyleSheet = null;
 const __defaultClassName = '';
@@ -9,28 +10,16 @@ const __defaultColor = '';
 
 function __defaultAttributes(): RAttributesType {
   return {
-    fc: __defaultColor,
-    bc: __defaultColor,
-    uc: __defaultColor,
-    className: __defaultClassName,
     isDefault: true,
     wcNode: false,
     asciiNode: true,
+    fci: -1,
+    bci: -1,
+    uci: -1,
   };
 }
 
 const __defaultAttrs = Object.freeze(__defaultAttributes());
-
-function __attrsHash(attrs: RAttributesType) {
-  if (attrs.isDefault) {
-    return 'default';
-  }
-  return `c:${attrs.className}:fc:${attrs.fc}:bc:${attrs.bc}:uc:${attrs.uc}:w:${
-    attrs.wcNode ? 'w' : 'n'
-  }:a:${attrs.asciiNode ? 'a' : 'n'}`;
-}
-
-const __attrsMap: Map<string, RAttributesType> = new Map();
 
 export function setNodeText(node: RNodeType, text: string, wcwidth?: number) {
   node.txt = text;
@@ -140,26 +129,43 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
   attrs.wcNode = this.wcNode;
   attrs.asciiNode = this.asciiNode;
 
-  if (this.uri) {
-    attrs.uri = this.uri;
+  if (typeof this.foreground === 'number') {
+    attrs.fci = this.foreground;
+  } else if (this.foreground !== this.DEFAULT_COLOR) {
+    attrs.fcs = this.foreground;
   }
-  if (this.uriId) {
-    attrs.uriId = this.uriId;
-  }
-  attrs.className = __generateClassName(this);
-  attrs.fc = this.fc;
-  attrs.bc = this.bc;
-  attrs.uc = this.uc;
 
-  const attrsHash = __attrsHash(attrs);
-  var cachedAttrs = __attrsMap.get(attrsHash);
-  if (cachedAttrs) {
-    return cachedAttrs;
-  } else if (__attrsMap.size < 5000) {
-    __attrsMap.set(attrsHash, attrs);
+  if (typeof this.background === 'number') {
+    attrs.bci = this.background;
+  } else if (this.background !== this.DEFAULT_COLOR) {
+    attrs.bcs = this.background;
   }
+
+  if (typeof this.underlineColor !== 'number') {
+    attrs.uci = this.underlineColor;
+  } else if (this.underlineColor !== this.DEFAULT_COLOR) {
+    attrs.ucs = this.underlineColor;
+  }
+
+  if (this.enableBold && this.bold) {
+    attrs.bold = true;
+  }
+  if (this.italic) {
+    attrs.italic = true;
+  }
+  if (this.blink) {
+    attrs.blink = true;
+  }
+  if (this.underline) {
+    attrs.underline = this.underline;
+  }
+  if (this.strikethrough) {
+    attrs.strikethrough = true;
+  }
+
   return attrs;
 };
+
 
 hterm.TextAttributes.prototype.syncColors = function() {
   var foregroundSource = this.foregroundSource;
@@ -216,30 +222,6 @@ hterm.TextAttributes.prototype.syncColors = function() {
   }
 };
 
-var __fc = []; // foreground color
-var __bc = []; // background color
-var __uc = []; // underline color
-var __b = 'b'; // bold
-var __bl = 'bl'; // blink
-var __u = 'u'; // underline
-var __s = 's'; // strikethrough
-var __us = 'us'; // underline and strikethrough
-var __uu = {
-  solid: 'u1',
-  double: 'u2',
-  wavy: 'u3',
-  dotted: 'u4',
-  dashed: 'u5',
-}; // underline
-var __i = 'i'; // italic
-var __invisible = 'invbl'; // invisible
-
-for (var i = 0; i < 256; i++) {
-  __fc[i] = 'c' + i;
-  __bc[i] = 'bc' + i;
-  __uc[i] = 'uc' + i;
-}
-
 function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   var rows = [];
   for (var i = 0; i < 256; i++) {
@@ -263,7 +245,7 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   rows.push('span.b { font-weight: bold;}');
   rows.push('span.i { font-style: italic;}');
   rows.push('span.wc { display: inline-block; overflow-x:hidden; }');
-  for (i = 0; i < 300; i++) {
+  for (i = 0; i < WC_PRECALCULATED_CLASSES; i++) {
     rows.push(
       'span.wc' +
         i +
@@ -275,95 +257,26 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   return rows.join('\n');
 }
 
-var __classNameMemory = new Map();
-
-function __generateClassName(attrs: hterm.TextAttributes): string {
-  var result = [];
-  if (
-    typeof attrs.foreground !== 'number' &&
-    attrs.foreground !== attrs.DEFAULT_COLOR
-  ) {
-    attrs.fc = attrs.foreground;
-  } else {
-    result.push(__fc[attrs.foreground]);
-    attrs.fc = __defaultColor;
-  }
-
-  if (
-    typeof attrs.background !== 'number' &&
-    attrs.background !== attrs.DEFAULT_COLOR
-  ) {
-    attrs.bc = attrs.background;
-  } else {
-    result.push(__bc[attrs.background]);
-    attrs.bc = __defaultColor;
-  }
-
-  if (
-    typeof attrs.underlineColor !== 'number' &&
-    attrs.underlineColor !== attrs.DEFAULT_COLOR
-  ) {
-    attrs.uc = attrs.underlineColor;
-  } else {
-    result.push(__uc[attrs.underlineColor]);
-    attrs.uc = __defaultColor;
-  }
-
-  if (attrs.enableBold && attrs.bold) {
-    result.push(__b);
-  }
-  if (attrs.italic) {
-    result.push(__i);
-  }
-  if (attrs.blink) {
-    result.push(__bl);
-  }
-  if (attrs.underline) {
-    if (attrs.strikethrough) {
-      result.push(__us);
-    } else {
-      result.push(__u);
-    }
-    result.push(__uu[attrs.underline]);
-  } else if (attrs.strikethrough) {
-    result.push(__s);
-  }
-  if (attrs.invisible) {
-    result.push(__invisible);
-  }
-
-  if (result.length) {
-    var name = result.join(' ');
-    var cached = __classNameMemory.get(name);
-    if (cached) {
-      return cached;
-    }
-    if (__classNameMemory.size < 1000) {
-      __classNameMemory.set(name, name);
-    }
-    return name;
-  }
-  return __defaultClassName;
-}
-
 export function nodeMatchesAttrs(node: RNodeType, attrs: RAttributesType) {
-  if (attrs === node.attrs && !attrs.wcNode) {
-    return true;
-  }
-
   if (attrs.isDefault) {
     return node.attrs.isDefault;
   }
 
+  var a = node.attrs;
+
   return (
-    !(node.attrs.wcNode || attrs.wcNode) &&
-    //!(this.tileData != null || attrs.tileData) &&
-    node.attrs.className === attrs.className &&
-    node.attrs.fc === attrs.fc &&
-    node.attrs.bc === attrs.bc &&
-    node.attrs.uc === attrs.uc &&
-    node.attrs.uriId == attrs.uriId &&
-    node.attrs.uri == attrs.uri
+    !(a.wcNode || attrs.wcNode) &&
+    a.fci === attrs.fci &&
+    a.bci === attrs.bci &&
+    a.uci === attrs.uci &&
+    a.fcs === attrs.fcs &&
+    a.bcs === attrs.bcs &&
+    a.ucs === attrs.ucs &&
+    a.bold === attrs.bold &&
+    a.blink === attrs.blink &&
+    a.italic === attrs.italic &&
+    a.underline === attrs.underline &&
+    a.strikethrough === attrs.strikethrough
   );
 }
 
@@ -372,13 +285,13 @@ hterm.TextAttributes.prototype.isDefault = function(): boolean {
   return (
     this.asciiNode &&
     !this.wcNode &&
+    !this.underline &&
     !this.bold &&
+    !this.italic &&
     this.foregroundSource == this.SRC_DEFAULT &&
     this.backgroundSource == this.SRC_DEFAULT &&
     !this.faint &&
-    !this.italic &&
     !this.blink &&
-    !this.underline &&
     !this.strikethrough &&
     !this.inverse &&
     !this.invisible &&

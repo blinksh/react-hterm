@@ -22,10 +22,9 @@ function node(text: string): RNodeType {
       isDefault: true,
       wcNode: false,
       asciiNode: true,
-      className: '',
-      fc: '',
-      bc: '',
-      uc: '',
+      fci: -1,
+      bci: -1,
+      uci: -1,
     },
   };
 }
@@ -40,10 +39,9 @@ function wcNode(text: string): RNodeType {
       isDefault: true,
       wcNode: true,
       asciiNode: false,
-      className: '',
-      fc: '',
-      bc: '',
-      uc: '',
+      fci: -1,
+      bci: -1,
+      uci: -1,
     },
   };
 }

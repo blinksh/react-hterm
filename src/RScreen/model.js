@@ -2,15 +2,23 @@
 
 export type RAttributesType = {|
   isDefault: boolean,
-  fc: string,
-  bc: string,
-  uc: string,
-  className: string,
+
   wcNode: boolean,
   asciiNode: boolean,
 
-  uri?: string,
-  uriId?: any,
+  fci: number,
+  bci: number,
+  uci: number,
+
+  fcs?: string,
+  bcs?: string,
+  ucs?: string,
+
+  bold?: boolean,
+  italic?: boolean,
+  blink?: boolean,
+  strikethrough?: boolean,
+  underline?: string,
 |};
 
 export type RNodeType = {|
