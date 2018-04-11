@@ -289,10 +289,10 @@ hterm.VT.prototype.parseCSI_ = function(parseState) {
       // Numeric parameter after the trailing modifier.  That's a paddlin'.
       __finishParsing(parseState);
     } else {
-      if (!args.length) {
-        args[0] = ch;
-      } else {
+      if (args.length) {
         args[args.length - 1] += ch;
+      } else {
+        args[0] = ch;
       }
 
       // Possible sub-parameters.
@@ -302,10 +302,10 @@ hterm.VT.prototype.parseCSI_ = function(parseState) {
     }
   } else if (ch >= ' ' && ch <= '?') {
     // Modifier character.
-    if (!args.length) {
-      this.leadingModifier_ += ch;
-    } else {
+    if (args.length) {
       this.trailingModifier_ += ch;
+    } else {
+      this.leadingModifier_ += ch;
     }
   } else if (this.cc1Pattern_.test(ch)) {
     // Control character.
@@ -342,10 +342,7 @@ hterm.VT.ParseState.prototype.resetArguments = function() {
 hterm.VT.ParseState.prototype.parseInt = function(argstr, defaultValue) {
   const ret = argstr >> 0;
   if (ret === 0) {
-    if (defaultValue === undefined) {
-      defaultValue = 0;
-    }
-    return defaultValue;
+    return defaultValue === undefined ? ret : defaultValue
   }
 
   return ret;

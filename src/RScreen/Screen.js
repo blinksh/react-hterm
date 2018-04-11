@@ -649,16 +649,6 @@ hterm.Screen.prototype.overwriteString = function(
 
   var attrs = this.textAttributes.attrs();
 
-  if (
-    nodeMatchesAttrs(cursorNode, attrs) &&
-    cursorNode.txt.substr(this.cursorOffset_) === str
-  ) {
-    // This overwrite would be a no-op, just move the cursor and return.
-    this.cursorOffset_ += wcwidth;
-    this.cursorPosition.column += wcwidth;
-    return;
-  }
-
   var wcwidthLeft = this.overwriteNode(str, wcwidth, attrs);
   if (wcwidthLeft > 0) {
     this.deleteChars(wcwidthLeft);

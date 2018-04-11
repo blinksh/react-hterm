@@ -5,8 +5,8 @@ import { genKey, touch } from './utils';
 import { WC_PRECALCULATED_CLASSES } from './RNode'
 
 var __cssStyleSheet = null;
-const __defaultClassName = '';
-const __defaultColor = '';
+
+hterm.TextAttributes.prototype.DEFAULT_COLOR = '';
 
 function __defaultAttributes(): RAttributesType {
   return {
