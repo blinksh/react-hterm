@@ -292,11 +292,11 @@ hterm.Screen.prototype.overwriteNode = function(
     // one of those spans to hold the text.
     if (
       !(
+        !this.textAttributes.asciiNode ||
+        this.textAttributes.wcNode ||
         this.textAttributes.underline ||
         this.textAttributes.strikethrough ||
         this.textAttributes.background ||
-        this.textAttributes.wcNode ||
-        !this.textAttributes.asciiNode ||
         this.textAttributes.tileData != null
       )
     ) {
@@ -306,11 +306,12 @@ hterm.Screen.prototype.overwriteNode = function(
     } else if (
       cursorNode.attrs.isDefault ||
       !(
-        cursorNode.attrs.uc ||
-        cursorNode.attrs.bc ||
-        cursorNode.attrs.fc ||
+        !cursorNode.attrs.asciiNode ||
         cursorNode.attrs.wcNode ||
-        !cursorNode.attrs.asciiNode
+        cursorNode.attrs.bci >= 0 ||
+        cursorNode.attrs.bcs ||
+        cursorNode.attrs.underline ||
+        cursorNode.attrs.strikethrough
       )
     ) {
       // Second best case, the current node is able to hold the whitespace.
@@ -519,11 +520,11 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
     // one of those spans to hold the text.
     if (
       !(
+        this.textAttributes.wcNode ||
+        !this.textAttributes.asciiNode ||
         this.textAttributes.underline ||
         this.textAttributes.strikethrough ||
         this.textAttributes.background ||
-        this.textAttributes.wcNode ||
-        !this.textAttributes.asciiNode ||
         this.textAttributes.tileData != null
       )
     ) {
@@ -533,11 +534,12 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
     } else if (
       cursorNode.attrs.isDefault ||
       !(
-        cursorNode.attrs.uc ||
-        cursorNode.attrs.bc ||
-        cursorNode.attrs.fc ||
+        !cursorNode.attrs.asciiNode ||
         cursorNode.attrs.wcNode ||
-        !cursorNode.attrs.asciiNode
+        cursorNode.attrs.bci >= 0 ||
+        cursorNode.attrs.bcs ||
+        cursorNode.attrs.underline ||
+        cursorNode.attrs.strikethrough
       )
     ) {
       // Second best case, the current node is able to hold the whitespace.

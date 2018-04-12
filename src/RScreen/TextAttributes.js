@@ -2,7 +2,7 @@
 import type { RNodeType, RAttributesType } from './model';
 import { hterm, lib } from '../hterm_all.js';
 import { genKey, touch } from './utils';
-import { WC_PRECALCULATED_CLASSES } from './RNode'
+import { WC_PRECALCULATED_CLASSES } from './RNode';
 
 var __cssStyleSheet = null;
 
@@ -123,11 +123,14 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
   if (this.isDefault()) {
     return __defaultAttrs;
   }
-  var attrs = __defaultAttributes();
-
-  attrs.isDefault = false;
-  attrs.wcNode = this.wcNode;
-  attrs.asciiNode = this.asciiNode;
+  var attrs: RAttributesType = {
+    isDefault: false,
+    wcNode: this.wcNode,
+    asciiNode: this.asciiNode,
+    fci: -1,
+    bci: -1,
+    uci: -1,
+  };
 
   if (typeof this.foreground === 'number') {
     attrs.fci = this.foreground;
@@ -165,7 +168,6 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
 
   return attrs;
 };
-
 
 hterm.TextAttributes.prototype.syncColors = function() {
   var foregroundSource = this.foregroundSource;
@@ -285,11 +287,11 @@ hterm.TextAttributes.prototype.isDefault = function(): boolean {
   return (
     this.asciiNode &&
     !this.wcNode &&
+    this.foregroundSource == this.SRC_DEFAULT &&
+    this.backgroundSource == this.SRC_DEFAULT &&
     !this.underline &&
     !this.bold &&
     !this.italic &&
-    this.foregroundSource == this.SRC_DEFAULT &&
-    this.backgroundSource == this.SRC_DEFAULT &&
     !this.faint &&
     !this.blink &&
     !this.strikethrough &&
@@ -302,7 +304,7 @@ hterm.TextAttributes.prototype.isDefault = function(): boolean {
 
 var _nonASCIIRegex = /[^\x00-\x7F]/;
 
-hterm.TextAttributes.splitWidecharStringBack = function(str) {
+hterm.TextAttributes.splitWidecharString = function(str) {
   var rv = [];
   var base = 0,
     length = 0,
@@ -398,7 +400,7 @@ hterm.TextAttributes.splitWidecharStringBack = function(str) {
   return rv;
 };
 
-hterm.TextAttributes.splitWidecharString = function(str) {
+hterm.TextAttributes.splitWidecharString2 = function(str) {
   var rv = [];
   var base = 0,
     length = 0,

@@ -133,10 +133,11 @@ hterm.VT.prototype.dispatch = function(type, code, parseState) {
     return;
   }
 
-  if (!handler._binded) {
-    handler._binded = handler.bind(this);
-  }
-  handler._binded(parseState, code);
+  handler.call(this, parseState, code);
+  //if (!handler._binded) {
+  //handler._binded = handler.bind(this);
+  //}
+  //handler._binded(parseState, code);
 };
 
 hterm.VT.ParseState.prototype.peekRemainingBuf = function() {
@@ -335,18 +336,45 @@ function __parseESC(parseState) {
 }
 
 hterm.VT.ParseState.prototype.resetArguments = function() {
-  this.args.length = 0;
+  this.args = [];
+  //this.args.length = 0;
   //if (typeof opt_arg_zero != 'undefined') this.args[0] = opt_arg_zero;
 };
 
 hterm.VT.ParseState.prototype.parseInt = function(argstr, defaultValue) {
   const ret = argstr >> 0;
   if (ret === 0) {
-    return defaultValue === undefined ? ret : defaultValue
+    return defaultValue === undefined ? ret : defaultValue;
   }
 
   return ret;
 };
+
+function __parseIndexColor(
+  args: number[],
+  i: number,
+  attrs: hterm.TextAttributes,
+): { skipCount: number, color?: number } {
+  // Color palette index.
+  // If we're short on args, assume this sequence is corrupted, so don't
+  // eat anything more.
+  if (args.length - i + 1 < 2) {
+    return { skipCount: 0 };
+  }
+
+  // Support 38:5:P (ISO 8613-6) and 38;5;P (xterm/legacy).
+  // We also ignore extra args with 38:5:P:[...], but more for laziness.
+  const color = args[i + 2] >> 0;
+  if (color < attrs.colorPalette.length) {
+    return {
+      skipCount: 2,
+      color,
+    };
+  }
+  return {
+    skipCount: 2,
+  };
+}
 
 hterm.VT.prototype.parseSgrExtendedColors = function(parseState, i, attrs) {
   let ary;
@@ -370,6 +398,10 @@ hterm.VT.prototype.parseSgrExtendedColors = function(parseState, i, attrs) {
     // The xterm form which isn't ISO 8613-6 compliant, but many emulators
     // support, and many applications rely on.
     // e.g. 38;2;R;G;B
+    // try to avoid slice
+    if (parseState.args[i + 1] >> 0 === 5) {
+      return __parseIndexColor(parseState.args, i, attrs);
+    }
     ary = parseState.args.slice(i + 1);
     usedSubargs = false;
   }
