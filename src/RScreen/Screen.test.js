@@ -668,5 +668,4 @@ test('case 1', () => {
   print(_screen, [0, 49], '║', { foregroundSource: 20 });
 
   expect(rowText(row)).toEqual(srcString);
-  console.log(row.nodes);
 });
