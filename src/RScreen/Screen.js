@@ -650,6 +650,32 @@ hterm.Screen.prototype.overwriteString = function(
   var cursorNode = cursorRowNode.nodes[this.cursorNodeIdx_];
 
   var attrs = this.textAttributes.attrs();
+  var offset = this.cursorOffset_;
+  const wcdiff = wcwidth + offset - cursorNode.wcw;
+  if (wcdiff <= 0 && nodeMatchesAttrs(cursorNode, attrs)) {
+    this.cursorOffset_ += wcwidth;
+    this.cursorPosition.column += wcwidth;
+    if (wcdiff === 0 && cursorNode.txt.substr(offset) === str) {
+      // This overwrite would be a no-op, just move the cursor and return.
+      return;
+    } else if (wcdiff === 0) {
+      setNodeAttributedText(
+        attrs,
+        cursorNode,
+        nodeSubstr(cursorNode, 0, offset) + str,
+      );
+    } else {
+      var s =
+        nodeSubstr(cursorNode, 0, offset) +
+        str +
+        nodeSubstr(cursorNode, offset + wcwidth);
+
+      setNodeAttributedText(attrs, cursorNode, s);
+    }
+
+    touch(cursorRowNode);
+    return;
+  }
 
   var wcwidthLeft = this.overwriteNode(str, wcwidth, attrs);
   if (wcwidthLeft > 0) {

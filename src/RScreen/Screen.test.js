@@ -2,6 +2,7 @@
 
 import { lib, hterm } from '../hterm_all';
 import type { RNodeType, RRowType } from './model';
+import { rowText } from './utils';
 require('./Screen');
 
 let _screen: hterm.Screen = new hterm.Screen();
@@ -617,4 +618,55 @@ test('whitespace-fill', () => {
   expect(row.nodes[1].txt).toEqual('hi'); //TODO: check line through
   ta.reset();
   _screen.clearCursorRow();
+});
+
+function print(
+  screen: hterm.Screen,
+  pos: [number, number],
+  str: string,
+  attrs: {} = {},
+) {
+  screen.setCursorPosition(pos[0], pos[1]);
+  var textAttributes = screen.textAttributes;
+
+  Object.keys(attrs).forEach(key => {
+    textAttributes[key] = attrs[key];
+  });
+
+  textAttributes.syncColors();
+
+  var tokens = hterm.TextAttributes.splitWidecharString(str);
+  var len = tokens.length;
+  for (var i = 0; i < len; i++) {
+    var token = tokens[i];
+    textAttributes.wcNode = token.wcNode;
+    textAttributes.asciiNode = token.asciiNode;
+    screen.overwriteString(token.str, token.wcStrWidth);
+    textAttributes.wcNode = false;
+    textAttributes.asciiNode = true;
+  }
+}
+
+test('case 1', () => {
+  const ta = _screen.textAttributes;
+  const row = _createRowWithPlainText('', 0);
+  _screen.pushRow(row);
+
+  let srcString = ` 39   ║   • ‘single’ and “double” quotes         ║`;
+
+  print(_screen, [0, 0], ' 39 ', { foregroundSource: 10 });
+  print(_screen, [0, 6], '║', { foregroundSource: 20 });
+  print(_screen, [0, 10], '•', { foregroundSource: 20 });
+  print(_screen, [0, 12], '‘', { foregroundSource: 20 });
+  print(_screen, [0, 13], 'single', { foregroundSource: 20 });
+  print(_screen, [0, 19], '’', { foregroundSource: 20 });
+  print(_screen, [0, 21], 'and', { foregroundSource: 20 });
+  print(_screen, [0, 25], '“', { foregroundSource: 20 });
+  print(_screen, [0, 26], 'double', { foregroundSource: 20 });
+  print(_screen, [0, 32], '”', { foregroundSource: 20 });
+  print(_screen, [0, 34], 'quotes', { foregroundSource: 20 });
+  print(_screen, [0, 49], '║', { foregroundSource: 20 });
+
+  expect(rowText(row)).toEqual(srcString);
+  console.log(row.nodes);
 });

@@ -304,7 +304,7 @@ hterm.TextAttributes.prototype.isDefault = function(): boolean {
 
 var _nonASCIIRegex = /[^\x00-\x7F]/;
 
-hterm.TextAttributes.splitWidecharString = function(str) {
+hterm.TextAttributes.splitWidecharString3 = function(str) {
   var rv = [];
   var base = 0,
     length = 0,

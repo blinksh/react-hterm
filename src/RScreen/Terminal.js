@@ -521,6 +521,16 @@ hterm.Terminal.prototype.eraseBelow = function() {
   this.clearCursorOverflow();
 };
 
+function debugPrint(screen: hterm.Screen, str: string) {
+  var loc = [screen.cursorPosition.row, screen.cursorPosition.column];
+  var attrs = screen.textAttributes;
+  console.log(
+    `print([${loc[0]}, ${loc[1]}], ${JSON.stringify(str)}, ${JSON.stringify(
+      attrs.attrs(),
+    )})`,
+  );
+}
+
 hterm.Terminal.prototype.print = function(str) {
   var startOffset = 0;
 
@@ -569,6 +579,7 @@ hterm.Terminal.prototype.print = function(str) {
       if (this.options_.insertMode) {
         this.screen_.insertString(token.str, token.wcStrWidth);
       } else {
+        //debugPrint(this.screen_, token);
         this.screen_.overwriteString(token.str, token.wcStrWidth);
       }
       textAttributes.wcNode = false;
