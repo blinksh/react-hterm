@@ -1,6 +1,6 @@
 // @flow
 
-import React from 'react';
+import React, { type Element } from 'react';
 import ReactDOM from 'react-dom';
 import type { RRowType } from './model';
 import RRow from './RRow';
@@ -13,7 +13,7 @@ export default class RRowList extends React.Component<*> {
   render() {
     const rows = this._rows;
     const len = rows.length;
-    const elements = new Array(len);
+    const elements: Element<*>[] = new Array(len);
     const rowsMap = new Map();
 
     for (let i = 0; i < len; i++) {

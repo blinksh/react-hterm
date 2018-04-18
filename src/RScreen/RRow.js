@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import type { RRowType, RImageType } from './model';
 import RNode from './RNode';
@@ -9,7 +9,7 @@ type PropsType = {|
   row: RRowType,
 |};
 
-export default class RRow extends Component<PropsType> {
+export default class RRow extends React.Component<PropsType> {
   _v: number = -1;
   _dirty: boolean = true;
 
