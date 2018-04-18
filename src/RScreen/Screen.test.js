@@ -669,3 +669,25 @@ test('case 1', () => {
 
   expect(rowText(row)).toEqual(srcString);
 });
+
+test('case 2', () => {
+  const ta = _screen.textAttributes;
+  const row = _createRowWithPlainText('', 0);
+  _screen.pushRow(row);
+
+  let srcString = `      27 CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;`;
+
+  print(_screen, [0, 0], '  ', { backgroundSource: 231 });
+  print(_screen, [0, 2], '    27 ', { foregroundSource: 223 });
+  print(_screen, [0, 9], 'CREATE', { foregroundSource: 203 });
+  print(_screen, [0, 16], 'EXTENSION', { foregroundSource: 231 });
+  print(_screen, [0, 26], 'IF', { foregroundSource: 231 });
+  print(_screen, [0, 29], 'NOT', { foregroundSource: 203 });
+  print(_screen, [0, 33], 'EXISTS', { foregroundSource: 203 });
+  print(_screen, [0, 40], 'plpgsql', { foregroundSource: 231 });
+  print(_screen, [0, 48], 'WITH', { foregroundSource: 231 });
+  print(_screen, [0, 53], 'SCHEMA', { foregroundSource: 231 });
+  print(_screen, [0, 60], 'pg_catalog;', { foregroundSource: 231 });
+
+  expect(rowText(row)).toEqual(srcString);
+});

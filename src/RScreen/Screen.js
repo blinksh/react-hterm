@@ -288,21 +288,25 @@ hterm.Screen.prototype.overwriteNode = function(
     // This whitespace should be completely unstyled.  Underline, background
     // color, and strikethrough would be visible on whitespace, so we can't use
     // one of those spans to hold the text.
+    //if (
+    //attrs.isDefault ||
+    //!(
+    //!attrs.asciiNode ||
+    //attrs.wcNode ||
+    //attrs.bci >= 0 ||
+    //attrs.bcs ||
+    //attrs.underline ||
+    //attrs.strikethrough
+    //)
+    //) {
+    //// Best case scenario, we can just pretend the spaces were part of the
+    //// original string.
+    //str = ws + str;
+    ////offset += reverseOffset;
+    ////wcwidth += ws.length;
+    ////wcwidthLeft = wcwidth;
+    //} else if (
     if (
-      attrs.isDefault ||
-      !(
-        !attrs.asciiNode ||
-        attrs.wcNode ||
-        attrs.bci >= 0 ||
-        attrs.bcs ||
-        attrs.underline ||
-        attrs.strikethrough
-      )
-    ) {
-      // Best case scenario, we can just pretend the spaces were part of the
-      // original string.
-      str = ws + str;
-    } else if (
       cursorNode.attrs.isDefault ||
       !(
         !cursorNode.attrs.asciiNode ||
@@ -314,10 +318,14 @@ hterm.Screen.prototype.overwriteNode = function(
       )
     ) {
       // Second best case, the current node is able to hold the whitespace.
-      setNodeText(cursorNode, (cursorNodeText += ws));
+      setNodeText(
+        cursorNode,
+        (cursorNodeText += ws),
+        cursorNode.wcw - reverseOffset,
+      );
     } else {
       // Worst case, we have to create a new node to hold the whitespace.
-      var wsNode = createDefaultNode(ws, ws.length);
+      var wsNode = createDefaultNode(ws, -reverseOffset);
       this.cursorNodeIdx_++;
       cursorRow.nodes.splice(this.cursorNodeIdx_, 0, wsNode);
       cursorNode = wsNode;
@@ -517,21 +525,22 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
     // This whitespace should be completely unstyled.  Underline, background
     // color, and strikethrough would be visible on whitespace, so we can't use
     // one of those spans to hold the text.
+    //if (
+    //attrs.isDefault ||
+    //!(
+    //!attrs.asciiNode ||
+    //attrs.wcNode ||
+    //attrs.bci >= 0 ||
+    //attrs.bcs ||
+    //attrs.underline ||
+    //attrs.strikethrough
+    //)
+    //) {
+    //// Best case scenario, we can just pretend the spaces were part of the
+    //// original string.
+    //str = ws + str;
+    //} else
     if (
-      attrs.isDefault ||
-      !(
-        !attrs.asciiNode ||
-        attrs.wcNode ||
-        attrs.bci >= 0 ||
-        attrs.bcs ||
-        attrs.underline ||
-        attrs.strikethrough
-      )
-    ) {
-      // Best case scenario, we can just pretend the spaces were part of the
-      // original string.
-      str = ws + str;
-    } else if (
       cursorNode.attrs.isDefault ||
       !(
         !cursorNode.attrs.asciiNode ||
@@ -543,10 +552,14 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
       )
     ) {
       // Second best case, the current node is able to hold the whitespace.
-      setNodeText(cursorNode, (cursorNodeText += ws));
+      setNodeText(
+        cursorNode,
+        (cursorNodeText += ws),
+        cursorNode.wcw - reverseOffset,
+      );
     } else {
       // Worst case, we have to create a new node to hold the whitespace.
-      var wsNode = createDefaultNode(ws, ws.length);
+      var wsNode = createDefaultNode(ws, -reverseOffset);
       this.cursorNodeIdx_++;
       cursorRow.nodes.splice(this.cursorNodeIdx_, 0, wsNode);
       cursorNode = wsNode;
@@ -652,7 +665,6 @@ hterm.Screen.prototype.overwriteString = function(
   var attrs = this.textAttributes.attrs();
   var offset = this.cursorOffset_;
   const wcdiff = wcwidth + offset - cursorNode.wcw;
-
 
   if (wcdiff <= 0 && nodeMatchesAttrs(cursorNode, attrs)) {
     this.cursorOffset_ += wcwidth;
