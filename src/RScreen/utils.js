@@ -17,7 +17,7 @@ export function nodeSubstr(
   node: RNodeType,
   start: number,
   width: number | void,
-) {
+): string {
   if (node.attrs.asciiNode) {
     return node.txt.substr(start, width);
   }

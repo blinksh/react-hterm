@@ -26,8 +26,6 @@ function __insertNode(
     v: 0,
   };
 
-  node.v++;
-
   var txt = node.txt;
   setNodeText(node, nodeSubstr(node, 0, offset));
   setNodeText(afterNode, lib.wc.substr(txt, offset));
@@ -291,13 +289,14 @@ hterm.Screen.prototype.overwriteNode = function(
     // color, and strikethrough would be visible on whitespace, so we can't use
     // one of those spans to hold the text.
     if (
+      attrs.isDefault ||
       !(
-        !this.textAttributes.asciiNode ||
-        this.textAttributes.wcNode ||
-        this.textAttributes.underline ||
-        this.textAttributes.strikethrough ||
-        this.textAttributes.background ||
-        this.textAttributes.tileData != null
+        !attrs.asciiNode ||
+        attrs.wcNode ||
+        attrs.bci >= 0 ||
+        attrs.bcs ||
+        attrs.underline ||
+        attrs.strikethrough
       )
     ) {
       // Best case scenario, we can just pretend the spaces were part of the
@@ -519,13 +518,14 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
     // color, and strikethrough would be visible on whitespace, so we can't use
     // one of those spans to hold the text.
     if (
+      attrs.isDefault ||
       !(
-        this.textAttributes.wcNode ||
-        !this.textAttributes.asciiNode ||
-        this.textAttributes.underline ||
-        this.textAttributes.strikethrough ||
-        this.textAttributes.background ||
-        this.textAttributes.tileData != null
+        !attrs.asciiNode ||
+        attrs.wcNode ||
+        attrs.bci >= 0 ||
+        attrs.bcs ||
+        attrs.underline ||
+        attrs.strikethrough
       )
     ) {
       // Best case scenario, we can just pretend the spaces were part of the
@@ -652,6 +652,8 @@ hterm.Screen.prototype.overwriteString = function(
   var attrs = this.textAttributes.attrs();
   var offset = this.cursorOffset_;
   const wcdiff = wcwidth + offset - cursorNode.wcw;
+
+
   if (wcdiff <= 0 && nodeMatchesAttrs(cursorNode, attrs)) {
     this.cursorOffset_ += wcwidth;
     this.cursorPosition.column += wcwidth;

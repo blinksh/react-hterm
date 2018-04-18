@@ -99,7 +99,6 @@ export default class RNode extends Component<PropsType> {
           classes.push('wc wc-node')
         }
       } else if (node.wcw < WC_PRECALCULATED_CLASSES) {
-        // TODO: move to config or const
         classes.push('wc wc' + node.wcw);
       } else {
         classes.push('wc');

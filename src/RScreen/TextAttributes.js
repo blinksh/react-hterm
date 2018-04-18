@@ -108,7 +108,7 @@ hterm.TextAttributes.prototype.resetColorPalette = function() {
   this.syncColors();
 };
 
-function __getBrightIndex(i) {
+function __getBrightIndex(i: number): number {
   if (i < 8) {
     // If the color is from the lower half of the ANSI 16, add 8.
     return i + 8;
@@ -304,62 +304,61 @@ hterm.TextAttributes.prototype.isDefault = function(): boolean {
 
 var _nonASCIIRegex = /[^\x00-\x7F]/;
 
-hterm.TextAttributes.splitWidecharString3 = function(str) {
-  var rv = [];
-  var base = 0,
+hterm.TextAttributes.splitWidecharString = function(str: string) {
+  var rv = [],
+    base = 0,
     length = 0,
     wcStrWidth = 0,
-    wcCharWidth;
-  var asciiNode = true;
-  var len = str.length;
-  var i = 0;
-  var idx = str.search(_nonASCIIRegex);
-  if (idx > 1) {
-    rv.push({
-      str: str.substr(0, idx),
-      wcNode: false,
-      asciiNode: true,
-      wcStrWidth: idx,
-    });
-    i = idx;
-  } else if (idx === -1) {
+    wcCharWidth = 0,
+    asciiNode = true,
+    len = str.length;
+  
+  var i = str.search(_nonASCIIRegex);
+  if (i < 0) {
     return [
       {
-        str: str,
+        str,
         wcNode: false,
-        asciiNode: true,
-        wcStrWidth: str.length,
+        asciiNode,
+        wcStrWidth: len,
       },
     ];
   }
+
+  length = wcStrWidth = i;
+
   while (i < len) {
-    var c = str.codePointAt(i);
     var increment;
+    var c = str.codePointAt(i);
     if (c < 128) {
       var substr = str.substr(i);
-      idx = substr.search(_nonASCIIRegex);
+      var idx = substr.search(_nonASCIIRegex);
       if (idx === -1) {
-        rv.push({
-          str: substr,
-          wcNode: false,
-          asciiNode: true,
-          wcStrWidth: substr.length,
-        });
+        if (length) {
+          rv.push({
+            str: str.substr(base),
+            wcNode: false,
+            asciiNode,
+            wcStrWidth: wcStrWidth + (len - i),
+          });
+        } else {
+          rv.push({
+            str: substr,
+            wcNode: false,
+            asciiNode: true,
+            wcStrWidth: substr.length,
+          });
+        }
         return rv;
       } else {
+        wcStrWidth += idx;
+        length += idx;
         increment = idx;
-        wcStrWidth = 0;
-        length = 0;
-        rv.push({
-          str: substr.substr(0, idx),
-          wcNode: false,
-          asciiNode: true,
-          wcStrWidth: idx,
-        });
       }
     } else {
       increment = c <= 0xffff ? 1 : 2;
       wcCharWidth = lib.wc.charWidth(c);
+
       if (wcCharWidth <= 1) {
         wcStrWidth += wcCharWidth;
         length += increment;
@@ -369,8 +368,8 @@ hterm.TextAttributes.splitWidecharString3 = function(str) {
           rv.push({
             str: str.substr(base, length),
             wcNode: false,
-            asciiNode: asciiNode,
-            wcStrWidth: wcStrWidth,
+            asciiNode,
+            wcStrWidth,
           });
           asciiNode = true;
           wcStrWidth = 0;
@@ -392,93 +391,15 @@ hterm.TextAttributes.splitWidecharString3 = function(str) {
     rv.push({
       str: str.substr(base, length),
       wcNode: false,
-      asciiNode: asciiNode,
-      wcStrWidth: wcStrWidth,
+      asciiNode,
+      wcStrWidth,
     });
   }
 
   return rv;
 };
 
-hterm.TextAttributes.splitWidecharString2 = function(str) {
-  var rv = [];
-  var base = 0,
-    length = 0,
-    wcStrWidth = 0,
-    wcCharWidth;
-  var asciiNode = true;
-  var len = str.length;
-  var i = 0;
-  var idx = str.search(_nonASCIIRegex);
-  if (idx > 1) {
-    rv.push({
-      str: str.substr(0, idx),
-      wcNode: false,
-      asciiNode: true,
-      wcStrWidth: idx,
-    });
-    i = idx;
-  } else if (idx === -1) {
-    return [
-      {
-        str: str,
-        wcNode: false,
-        asciiNode: true,
-        wcStrWidth: str.length,
-      },
-    ];
-  }
-  while (i < len) {
-    var c = str.codePointAt(i);
-    var increment;
-    if (c < 128) {
-      wcStrWidth += 1;
-      length += 1;
-      increment = 1;
-    } else {
-      increment = c <= 0xffff ? 1 : 2;
-      wcCharWidth = lib.wc.charWidth(c);
-      if (wcCharWidth <= 1) {
-        wcStrWidth += wcCharWidth;
-        length += increment;
-        asciiNode = false;
-      } else {
-        if (length) {
-          rv.push({
-            str: str.substr(base, length),
-            wcNode: false,
-            asciiNode: asciiNode,
-            wcStrWidth: wcStrWidth,
-          });
-          asciiNode = true;
-          wcStrWidth = 0;
-        }
-        rv.push({
-          str: str.substr(i, increment),
-          wcNode: true,
-          asciiNode: false,
-          wcStrWidth: 2,
-        });
-        base = i + increment;
-        length = 0;
-      }
-    }
-    i += increment;
-  }
-
-  if (length) {
-    rv.push({
-      str: str.substr(base, length),
-      wcNode: false,
-      asciiNode: asciiNode,
-      wcStrWidth: wcStrWidth,
-    });
-  }
-
-  return rv;
-};
-
-lib.wc.substr = function(str, start, opt_width) {
+lib.wc.substr = function(str: string, start: number, opt_width?: number): string {
   if (!_nonASCIIRegex.test(str)) {
     return str.substr(start, opt_width);
   }
@@ -505,7 +426,9 @@ lib.wc.substr = function(str, start, opt_width) {
     for (endIndex = startIndex, width = 0; endIndex < str.length; ) {
       const codePoint = str.codePointAt(endIndex);
       width += lib.wc.charWidth(codePoint);
-      if (width > opt_width) break;
+      if (width > opt_width) {
+        break;
+      }
       endIndex += codePoint <= 0xffff ? 1 : 2;
     }
     return str.substring(startIndex, endIndex);
@@ -514,15 +437,20 @@ lib.wc.substr = function(str, start, opt_width) {
   return str.substr(startIndex);
 };
 
-lib.wc.strWidth = function(str) {
-  if (!_nonASCIIRegex.test(str)) {
-    return str.length;
-  }
-
+lib.wc.strWidth = function(str: string): number {
   var width,
+    len = str.length,
     rv = 0;
 
-  for (var i = 0, len = str.length; i < len; ) {
+  var idx = str.search(_nonASCIIRegex);
+  if (idx < 0) {
+    return len;
+  }
+
+  var i = idx;
+  rv = idx;
+
+  while( i < len ) {
     var codePoint = str.codePointAt(i);
     width = lib.wc.charWidth(codePoint);
     if (width < 0) return -1;
@@ -541,7 +469,7 @@ lib.wc.charWidth = function(ucs: number): number {
   let res = __charCache.get(ucs);
   if (res === undefined) {
     res = __charWidth(ucs);
-    if (__charCache.size > 200000) {
+    if (__charCache.size > 20000) {
       __charCache = new Map();
     }
     __charCache.set(ucs, res);
