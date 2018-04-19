@@ -54,37 +54,37 @@ export default class RNode extends Component<PropsType> {
     // otherwise set them with style
     var style = null;
     if (attrs.fci >= 0) {
-      classes.push(__fc[attrs.fci])
+      classes.push(__fc[attrs.fci]);
     } else if (attrs.fcs !== undefined) {
       style = style || {};
       style.color = attrs.fcs;
     }
     if (attrs.bci >= 0) {
-      classes.push(__bc[attrs.bci])
+      classes.push(__bc[attrs.bci]);
     } else if (attrs.bcs !== undefined) {
       style = style || {};
       style.backgroundColor = attrs.bcs;
     }
     if (attrs.uci >= 0) {
-      classes.push(__uc[attrs.uci])
+      classes.push(__uc[attrs.uci]);
     } else if (attrs.ucs !== undefined) {
       style = style || {};
       style.textDecorationColor = attrs.ucs;
     }
 
     if (attrs.bold) {
-      classes.push(__b)
+      classes.push(__b);
     }
 
     if (attrs.italic) {
-      classes.push(__i)
+      classes.push(__i);
     }
 
     if (attrs.underline) {
       if (attrs.strikethrough) {
-        classes.push(__us)
+        classes.push(__us);
       } else {
-        classes.push(__u)
+        classes.push(__u);
       }
       classes.push(__uu[attrs.underline]);
     } else if (attrs.strikethrough) {
@@ -96,7 +96,7 @@ export default class RNode extends Component<PropsType> {
         if (_emojiRegex.test(node.txt)) {
           classes.push('wc wc-node emoji');
         } else {
-          classes.push('wc wc-node')
+          classes.push('wc wc-node');
         }
       } else if (node.wcw < WC_PRECALCULATED_CLASSES) {
         classes.push('wc wc' + node.wcw);

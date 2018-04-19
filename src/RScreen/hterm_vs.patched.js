@@ -201,8 +201,13 @@ var __currentParseState = null;
 var __busy: boolean | AnimationFrameID = false;
 var __vt;
 
+function __deferredInterpet() {
+  ReactDOM.unstable_deferredUpdates(__interpret);
+}
+
 function __interpret() {
   var vt = __vt;
+  var timeBudget = Date.now() + 10;
 
   while (true) {
     if (__currentParseState === null) {
@@ -230,6 +235,11 @@ function __interpret() {
         __currentParseState = null;
         throw 'Parser did not alter the state!';
       }
+
+      if (timeBudget < Date.now()) {
+        requestAnimationFrame(__deferredInterpet);
+        return;
+      }
     }
     __currentParseState = null;
   }
@@ -245,7 +255,7 @@ hterm.VT.prototype.interpret = function(buf) {
   }
 
   __busy = true;
-  ReactDOM.unstable_deferredUpdates(__interpret);
+  __deferredInterpet();
 };
 
 function __finishParsing(parseState) {

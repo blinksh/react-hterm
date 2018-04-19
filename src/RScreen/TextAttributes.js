@@ -312,7 +312,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
     wcCharWidth = 0,
     asciiNode = true,
     len = str.length;
-  
+
   var i = str.search(_nonASCIIRegex);
   if (i < 0) {
     return [
@@ -399,7 +399,11 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
   return rv;
 };
 
-lib.wc.substr = function(str: string, start: number, opt_width?: number): string {
+lib.wc.substr = function(
+  str: string,
+  start: number,
+  opt_width?: number,
+): string {
   if (!_nonASCIIRegex.test(str)) {
     return str.substr(start, opt_width);
   }
@@ -450,7 +454,7 @@ lib.wc.strWidth = function(str: string): number {
   var i = idx;
   rv = idx;
 
-  while( i < len ) {
+  while (i < len) {
     var codePoint = str.codePointAt(i);
     width = lib.wc.charWidth(codePoint);
     if (width < 0) return -1;
