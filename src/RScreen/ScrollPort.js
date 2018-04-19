@@ -162,6 +162,7 @@ hterm.ScrollPort.prototype.decorate = function() {
     'padding: 0px;' +
     'height: 100%;' +
     'width: 100%;' +
+    'touch-atcion: manipulation;' +
     'cursor: var(--hterm-mouse-cursor-style);' +
     'outline: none !important';
 
@@ -301,6 +302,9 @@ hterm.ScrollPort.prototype.on_touchstart_ = function(e) {
 
 hterm.ScrollPort.prototype.on_touchmove_ = function(e) {
   this.scroller_.doTouchMove(e.touches, e.timeStamp, e.scale);
+  if (this.scroller_.__isDragging) {
+    e.preventDefault();
+  }
 };
 
 hterm.ScrollPort.prototype.on_touchend_ = function(e) {

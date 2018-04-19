@@ -885,8 +885,8 @@ export default class Scroller {
 
       // Otherwise figure out whether we are switching into dragging mode now.
     } else {
-      var minimumTrackingForScroll = self.options.locking ? 3 : 0;
-      var minimumTrackingForDrag = 5;
+      var minimumTrackingForScroll = self.options.locking ? 6 : 0;
+      var minimumTrackingForDrag = 7;
 
       var distanceX = Math.abs(currentTouchLeft - self.__initialTouchLeft);
       var distanceY = Math.abs(currentTouchTop - self.__initialTouchTop);
