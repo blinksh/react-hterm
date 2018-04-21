@@ -11,7 +11,7 @@ var __bc = new Array(COLORS); // background color
 var __uc = new Array(COLORS); // underline color
 var __b = 'b'; // bold
 var __i = 'i'; // italic
-var __bl = 'bl'; // blink
+var __blink = 'blink-node';
 var __u = 'u'; // underline
 var __s = 's'; // strikethrough
 var __us = 'us'; // underline and strikethrough
@@ -78,6 +78,10 @@ export default class RNode extends Component<PropsType> {
 
     if (attrs.italic) {
       classes.push(__i);
+    }
+
+    if (attrs.blink) {
+      classes.push(__blink);
     }
 
     if (attrs.underline) {
