@@ -516,7 +516,9 @@ hterm.ScrollPort.prototype.scrollRowToTop = function(rowIndex) {
   var scrollMax = this.getScrollMax_();
   if (scrollTop > scrollMax) scrollTop = scrollMax;
 
-  if (__pageYOffset === scrollTop) return;
+  if (__pageYOffset === scrollTop) {
+    return;
+  }
 
   this.scroller_.scrollTo(0, scrollTop);
   this.scheduleRedraw();
@@ -578,8 +580,7 @@ hterm.ScrollPort.prototype.onScrollWheel = function(e) {};
 
 hterm.ScrollPort.prototype.onResize_ = function(e) {
   __screenSize = hterm.getClientSize(this.screen_);
-  this.scroller_.setDimensions(__screenSize.width, __screenSize.height);
-  //__pageYOffset = this.scroller_.getValues().top;
+  this.scroller_.setDimensions(__screenSize.width, __screenSize.height, null, __prevHeight);
   // Re-measure, since onResize also happens for browser zoom changes.
   this.syncCharacterSize();
 };
