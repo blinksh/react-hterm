@@ -352,6 +352,7 @@ hterm.ScrollPort.prototype.scheduleInvalidate = function() {
 };
 
 var __nodesPositionStyle = 'absolute';
+var __currentTransform = '';
 
 hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   var screenSize = this.getScreenSize();
@@ -374,6 +375,20 @@ hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   // can be used later to determine the topRowIndex.
   this.visibleRowTopMargin = 0;
   this.visibleRowBottomMargin = screenSize.height - visibleRowsHeight;
+
+  var transform = '';
+  if (__pageYOffset < 0) {
+    transform = 'translate3d(0, ' + -__pageYOffset + 'px, 0)';
+  }
+
+  if (transform !== __currentTransform) {
+    __currentTransform = transform;
+    this.rowNodes_.style.transform = transform;
+
+    if (this.rowProvider_.cursorOverlayNode_) {
+      this.rowProvider_.cursorOverlayNode_.style.transform = transform;
+    }
+  }
 
   //if (__pageYOffset <= 0) {
   //if (__nodesPositionStyle === 'absolute') {
@@ -533,7 +548,11 @@ hterm.ScrollPort.prototype.scrollToBottom = function() {
 };
 
 hterm.ScrollPort.prototype.getTopRowIndex = function() {
-  return Math.round(__pageYOffset / this.characterSize.height);
+  var idx = Math.round(__pageYOffset / this.characterSize.height);
+  if (idx < 0) {
+    return 0;
+  }
+  return idx;
 };
 
 hterm.ScrollPort.prototype.onScroll_ = function(e) {

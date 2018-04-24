@@ -177,7 +177,8 @@ hterm.Terminal.prototype.syncCursorPosition_ = function() {
 
   if (cursorRowIndex > bottomRowIndex) {
     // Cursor is scrolled off screen, move it outside of the visible area.
-    this.setCssCursorPos({ row: -1, col: this.screen_.cursorPosition.column });
+    //this.setCssCursorPos({ row: -1, col: this.screen_.cursorPosition.column });
+    this.setCssCursorPos({ row: -1, col: -1 });
     return;
   }
 
