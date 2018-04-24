@@ -7,7 +7,7 @@ import { touch, rowWidth, genKey } from './utils';
 import { createDefaultNode } from './TextAttributes';
 
 hterm.Terminal.prototype.decorate = function(div) {
-  this.div_ = div;
+  this.div_ = document.body;
 
   this.scrollPort_.decorate(div);
   this.scrollPort_.setUserCssUrl(this.prefs_.get('user-css'));
