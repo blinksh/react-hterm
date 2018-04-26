@@ -3,7 +3,7 @@
 import type { RRowType } from './model';
 
 import { hterm, lib } from '../hterm_all.js';
-import { touch, rowWidth, genKey } from './utils';
+import { touch, rowWidth, rowText, genKey } from './utils';
 import { createDefaultNode } from './TextAttributes';
 
 hterm.Terminal.prototype.decorate = function(div) {
@@ -267,8 +267,6 @@ hterm.Terminal.prototype.scheduleScrollDown_ = function() {
     self.scrollPort_.scrollToBottom();
   }, 20);
 };
-
-hterm.Terminal.prototype.copySelectionToClipboard = function() {};
 
 hterm.Terminal.prototype.renumberRows_ = function(start, end, opt_screen) {
   var screen = opt_screen || this.screen_;
@@ -733,4 +731,17 @@ hterm.Terminal.prototype.displayImage = function(options) {
       io.pop();
     };
   }
+};
+
+hterm.Terminal.prototype.getRowsText = function(start, end) {
+  var ary = [];
+  for (var i = start; i < end; i++) {
+    var node = this.getRowNode(i);
+    ary.push(rowText(node));
+    if (i < end - 1 && !node.o) {
+      ary.push('\n');
+    }
+  }
+
+  return ary.join('');
 };

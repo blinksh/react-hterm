@@ -9,6 +9,17 @@ import Scroller from './scroller/Scroller';
 let __screenSize = { height: window.innerHeight, width: window.innerWidth };
 let __pageYOffset = 0;
 
+var __findReactComponent = function(el) {
+  for (const key in el) {
+    if (key.startsWith('__reactInternalInstance$')) {
+      const fiberNode = el[key];
+
+      return fiberNode && fiberNode.return && fiberNode.return.stateNode;
+    }
+  }
+  return null;
+};
+
 hterm.ScrollPort.Selection.prototype.sync = function() {
   var self = this;
 
@@ -45,7 +56,7 @@ hterm.ScrollPort.Selection.prototype.sync = function() {
   if (this.isCollapsed) return;
 
   var anchorRow = selection.anchorNode;
-  while (anchorRow && !('rowIndex' in anchorRow)) {
+  while (anchorRow && anchorRow.nodeName !== 'X-ROW') {
     anchorRow = anchorRow.parentNode;
   }
 
@@ -57,8 +68,10 @@ hterm.ScrollPort.Selection.prototype.sync = function() {
     return;
   }
 
+  anchorRow.rowIndex = __findReactComponent(anchorRow).props.row.n;
+
   var focusRow = selection.focusNode;
-  while (focusRow && !('rowIndex' in focusRow)) {
+  while (focusRow && focusRow.nodeName !== 'X-ROW') {
     focusRow = focusRow.parentNode;
   }
 
@@ -69,6 +82,8 @@ hterm.ScrollPort.Selection.prototype.sync = function() {
     );
     return;
   }
+
+  focusRow.rowIndex = __findReactComponent(focusRow).props.row.n;
 
   if (anchorRow.rowIndex < focusRow.rowIndex) {
     anchorFirst();
@@ -580,7 +595,12 @@ hterm.ScrollPort.prototype.onScrollWheel = function(e) {};
 
 hterm.ScrollPort.prototype.onResize_ = function(e) {
   __screenSize = hterm.getClientSize(this.screen_);
-  this.scroller_.setDimensions(__screenSize.width, __screenSize.height, null, __prevHeight);
+  this.scroller_.setDimensions(
+    __screenSize.width,
+    __screenSize.height,
+    null,
+    __prevHeight,
+  );
   // Re-measure, since onResize also happens for browser zoom changes.
   this.syncCharacterSize();
 };
