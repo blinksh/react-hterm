@@ -316,7 +316,7 @@ export default class Scroller {
     self.__computeScrollMax();
 
     // Refresh scroll position
-    self.scrollTo(self.__scrollLeft, self.__scrollTop, true);
+    self.scrollTo(self.__scrollLeft, self.getScrollMax().top, false);
   }
 
   /**
@@ -894,7 +894,9 @@ export default class Scroller {
       self.__enableScrollX =
         self.options.scrollingX && distanceX >= minimumTrackingForScroll;
       self.__enableScrollY =
-        touches.length === 1 && self.options.scrollingY && distanceY >= minimumTrackingForScroll;
+        touches.length === 1 &&
+        self.options.scrollingY &&
+        distanceY >= minimumTrackingForScroll;
 
       positions.push(self.__scrollLeft, self.__scrollTop, timeStamp);
 

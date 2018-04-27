@@ -366,7 +366,6 @@ hterm.ScrollPort.prototype.scheduleInvalidate = function() {
   }, 0);
 };
 
-var __nodesPositionStyle = 'absolute';
 var __currentTransform = '';
 
 hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
@@ -404,26 +403,6 @@ hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
       this.rowProvider_.cursorOverlayNode_.style.transform = transform;
     }
   }
-
-  //if (__pageYOffset <= 0) {
-  //if (__nodesPositionStyle === 'absolute') {
-  //return;
-  //}
-  //__nodesPositionStyle = 'absolute';
-  //this.rowNodes_.style.position = 'absolute';
-  //if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
-  //this.rowProvider_.cursorNode_.style.position = 'absolute';
-  //}
-  //} else {
-  //if (__nodesPositionStyle === 'fixed') {
-  //return;
-  //}
-  //__nodesPositionStyle = 'fixed';
-  //this.rowNodes_.style.position = 'fixed';
-  //if (this.rowProvider_ && this.rowProvider_.cursorNode_) {
-  //this.rowProvider_.cursorNode_.style.position = 'fixed';
-  //}
-  //}
 };
 
 var __prevHeight = 0;
@@ -441,7 +420,12 @@ hterm.ScrollPort.prototype.syncScrollHeight = function() {
 
   __prevHeight = height;
 
-  this.scroller_.setDimensions(null, null, null, __prevHeight);
+  this.scroller_.setDimensions(
+    __screenSize.width,
+    __screenSize.height,
+    __screenSize.width,
+    __prevHeight,
+  );
 };
 
 hterm.ScrollPort.prototype.scheduleRedraw = function() {
@@ -550,7 +534,9 @@ hterm.ScrollPort.prototype.scrollRowToBottom = function(rowIndex) {
     this.visibleRowBottomMargin;
   scrollTop -= this.visibleRowCount * this.characterSize.height;
 
-  if (scrollTop < 0) scrollTop = 0;
+  if (scrollTop < 0) {
+    scrollTop = 0;
+  }
 
   if (__pageYOffset === scrollTop) {
     return;
@@ -722,4 +708,41 @@ hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
   this.div_.ownerDocument.body.removeChild(this.svg_);
 
   return size;
+};
+
+hterm.ScrollPort.prototype.resize = function() {
+  this.currentScrollbarWidthPx =
+    hterm.getClientWidth(this.screen_) - this.screen_.clientWidth;
+
+  this.syncScrollHeight();
+  this.syncRowNodesDimensions_();
+
+  var self = this;
+  this.publish('resize', { scrollPort: this }, function() {
+    self.scroller_.__callback = () => {};
+    self.scroller_ = new Scroller(
+      function render(left, top, zoom) {
+        if (__pageYOffset === top) {
+          return;
+        }
+        __pageYOffset = top || 0;
+        self.onScroll_();
+      },
+      { scrollingX: false },
+    );
+
+    self.scroller_.setDimensions(
+      __screenSize.width,
+      __screenSize.height,
+      __screenSize.width,
+      __prevHeight,
+    );
+    var pos = __prevHeight - __screenSize.height;
+    if (pos < 0) {
+      pos = 0;
+    }
+    self.scroller_.scrollTo(0, pos, false);
+    //self.scrollRowToBottom(self.rowProvider_.getRowCount());
+    self.scheduleRedraw();
+  });
 };
