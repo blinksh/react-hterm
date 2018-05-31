@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "nervjs": "^1.2.15",
-    "react": "^16.2.0",
-    "react-dom": "^16.2.0",
+    "react": "16.4.0",
+    "react-dom": "16.4.0",
     "react-scripts": "1.1.4"
   },
   "scripts": {
@@ -15,9 +14,9 @@
     "eject": "react-scripts eject"
   },
   "devDependencies": {
-    "flow-bin": "^0.70.0",
+    "flow-bin": "0.73.0",
     "flow-typed": "^2.4.0",
-    "prettier": "^1.12.1",
-    "serve": "^6.5.6"
+    "prettier": "1.13.3",
+    "serve": "7.1.5"
   }
 }
