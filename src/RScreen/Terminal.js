@@ -119,6 +119,8 @@ hterm.Terminal.prototype.decorate = function(div) {
     ';' +
     'width: var(--hterm-charsize-width);' +
     'height: var(--hterm-charsize-height);' +
+    'background-color: var(--hterm-cursor-color);' +
+    'border-color: var(--hterm-cursor-color);' +
     '  isolatation: isolate;' +
     '  transform: translate3d(calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col)), calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row)), 0);' +
     '-webkit-transition: opacity, background-color 100ms linear;' +
@@ -666,7 +668,7 @@ hterm.Terminal.prototype.displayImage = function(options) {
 
         const ary = dim.match(/^([0-9]+)(px|%)?$/);
         if (ary) {
-          if (ary[2] == '%') return maxDim * parseInt(ary[1]) / 100 + 'px';
+          if (ary[2] == '%') return (maxDim * parseInt(ary[1])) / 100 + 'px';
           else if (ary[2] == 'px') return dim;
           else return `calc(${dim} * var(${cssVar}))`;
         }
