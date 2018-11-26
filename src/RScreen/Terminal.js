@@ -9,6 +9,7 @@ import { createDefaultNode } from './TextAttributes';
 hterm.Terminal.prototype.decorate = function(div) {
   this.div_ = document.body;
 
+  this.accessibilityReader_ = new hterm.AccessibilityReader(div);
   this.scrollPort_.decorate(div);
   this.scrollPort_.setUserCssUrl(this.prefs_.get('user-css'));
   this.scrollPort_.setUserCssText(this.prefs_.get('user-css-text'));
