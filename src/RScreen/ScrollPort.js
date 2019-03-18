@@ -733,6 +733,16 @@ hterm.ScrollPort.prototype.onCopy_ = function(e) {
   }
 };
 
+function __getTextWidth(text, font) {
+  // if given, use cached canvas for better performance
+  // else, create new canvas
+  var canvas = __getTextWidth.canvas || (__getTextWidth.canvas = document.createElement("canvas"));
+  var context = canvas.getContext("2d");
+  context.font = font;
+  var metrics = context.measureText(text);
+  return {width:metrics.width, height: metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent}
+};
+
 hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
   // Number of lines used to average the height of a single character.
   var numberOfLines = 100;
@@ -752,29 +762,32 @@ hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
 
     // We need to put the text in a span to make the size calculation
     // work properly in Firefox
-    this.rulerSpan_ = this.document_.createElement('span');
-    this.rulerSpan_.id = 'hterm:ruler-span-workaround';
-    this.rulerSpan_.innerHTML = ('X'.repeat(lineLength) + '\r').repeat(
-      numberOfLines,
-    );
-    this.ruler_.appendChild(this.rulerSpan_);
+    //this.rulerSpan_ = this.document_.createElement('span');
+    //this.rulerSpan_.id = 'hterm:ruler-span-workaround';
+    //this.rulerSpan_.innerHTML = ('X'.repeat(lineLength) + '\r').repeat(
+    //  numberOfLines,
+    //);
+    //this.ruler_.appendChild(this.rulerSpan_);
 
     this.rulerBaseline_ = this.document_.createElement('span');
-    this.rulerSpan_.id = 'hterm:ruler-baseline';
+    //this.rulerSpan_.id = 'hterm:ruler-baseline';
     // We want to collapse it on the baseline
     this.rulerBaseline_.style.fontSize = '0px';
     this.rulerBaseline_.textContent = 'X';
   }
 
-  this.rulerSpan_.style.fontWeight = opt_weight || '';
+  //this.rulerSpan_.style.fontWeight = opt_weight || '';
 
   this.rowNodes_.appendChild(this.ruler_);
-  var rulerSize = hterm.getClientSize(this.rulerSpan_);
+  //var rulerSize = hterm.getClientSize(this.rulerSpan_);
 
-  var size = new hterm.Size(
-    rulerSize.width / lineLength,
-    rulerSize.height / numberOfLines,
-  );
+  var font = this.screen_.style.font;
+  var s = __getTextWidth('X', font)
+
+  var size = new hterm.Size(s.width, s.height);
+    //rulerSize.width / lineLength,
+    //rulerSize.height / numberOfLines,
+  //);
 
   this.ruler_.insertBefore(this.rulerBaseline_, this.ruler_.childNodes[0]);
   size.baseline = this.rulerBaseline_.offsetTop;
