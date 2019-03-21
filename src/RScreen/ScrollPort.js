@@ -749,6 +749,8 @@ hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
   // Number of chars per line used to average the width of a single character.
   var lineLength = 100;
 
+  var domMethod = window.fontSizeDetectionMethod !== 'canvas';
+
   if (!this.ruler_) {
     this.ruler_ = this.document_.createElement('div');
     this.ruler_.id = 'hterm:ruler-character-size';
@@ -762,32 +764,42 @@ hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
 
     // We need to put the text in a span to make the size calculation
     // work properly in Firefox
-    //this.rulerSpan_ = this.document_.createElement('span');
-    //this.rulerSpan_.id = 'hterm:ruler-span-workaround';
-    //this.rulerSpan_.innerHTML = ('X'.repeat(lineLength) + '\r').repeat(
-    //  numberOfLines,
-    //);
-    //this.ruler_.appendChild(this.rulerSpan_);
+    if (domMethod) {
+      this.rulerSpan_ = this.document_.createElement('span');
+      this.rulerSpan_.id = 'hterm:ruler-span-workaround';
+      this.rulerSpan_.innerHTML = ('X'.repeat(lineLength) + '\r').repeat(
+        numberOfLines,
+      );
+      this.ruler_.appendChild(this.rulerSpan_);
+    }
 
     this.rulerBaseline_ = this.document_.createElement('span');
-    //this.rulerSpan_.id = 'hterm:ruler-baseline';
+    this.rulerBaseline_.id = 'hterm:ruler-baseline';
     // We want to collapse it on the baseline
     this.rulerBaseline_.style.fontSize = '0px';
     this.rulerBaseline_.textContent = 'X';
   }
 
-  //this.rulerSpan_.style.fontWeight = opt_weight || '';
+
+  if (this.rulerSpan_) {
+    this.rulerSpan_.style.fontWeight = opt_weight || '';
+  }
 
   this.rowNodes_.appendChild(this.ruler_);
-  //var rulerSize = hterm.getClientSize(this.rulerSpan_);
 
-  var font = this.screen_.style.font;
-  var s = __getTextWidth('X', font)
+  var size;
+  if (domMethod) {
+    var rulerSize = hterm.getClientSize(this.rulerSpan_);
+    size = new hterm.Size(
+      rulerSize.width / lineLength,
+      rulerSize.height / numberOfLines,
+    );
+  } else {
+    var font = this.screen_.style.font;
+    var s = __getTextWidth('QWER1YUIOX'.repeat(10), font)
 
-  var size = new hterm.Size(s.width, s.height);
-    //rulerSize.width / lineLength,
-    //rulerSize.height / numberOfLines,
-  //);
+    size = new hterm.Size(s.width /  100, s.height);
+  }
 
   this.ruler_.insertBefore(this.rulerBaseline_, this.ruler_.childNodes[0]);
   size.baseline = this.rulerBaseline_.offsetTop;
