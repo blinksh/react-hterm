@@ -84,6 +84,7 @@ hterm.Screen.prototype.clearCursorRow = function() {
   var row = this.rowsArray[this.cursorRowIdx_];
   row.nodes = [node];
   row.o = false;
+  delete row.img;
   touch(row);
   this.cursorNodeIdx_ = 0;
 
