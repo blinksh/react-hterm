@@ -1,17 +1,17 @@
 // @flow
-import { hterm, lib } from '../hterm_all.js';
+import { hterm, lib } from "../hterm_all.js";
 
-import React from 'react';
-import ReactDOM from 'react-dom';
-import RRowList from './RRowList';
-import Scroller from './scroller/Scroller';
+import React from "react";
+import ReactDOM from "react-dom";
+import RRowList from "./RRowList";
+import WKScroller from "./scroller/WKScroller";
 
 let __screenSize = { height: window.innerHeight, width: window.innerWidth };
 let __pageYOffset = 0;
 
 var __findReactComponent = function(el) {
   for (const key in el) {
-    if (key.startsWith('__reactInternalInstance$')) {
+    if (key.startsWith("__reactInternalInstance$")) {
       const fiberNode = el[key];
 
       return fiberNode && fiberNode.return && fiberNode.return.stateNode;
@@ -56,14 +56,14 @@ hterm.ScrollPort.Selection.prototype.sync = function() {
   if (this.isCollapsed) return;
 
   var anchorRow = selection.anchorNode;
-  while (anchorRow && anchorRow.nodeName !== 'X-ROW') {
+  while (anchorRow && anchorRow.nodeName !== "X-ROW") {
     anchorRow = anchorRow.parentNode;
   }
 
   if (!anchorRow) {
     console.error(
-      'Selection anchor is not rooted in a row node: ' +
-        selection.anchorNode.nodeName,
+      "Selection anchor is not rooted in a row node: " +
+        selection.anchorNode.nodeName
     );
     return;
   }
@@ -71,14 +71,14 @@ hterm.ScrollPort.Selection.prototype.sync = function() {
   anchorRow.rowIndex = __findReactComponent(anchorRow).props.row.n;
 
   var focusRow = selection.focusNode;
-  while (focusRow && focusRow.nodeName !== 'X-ROW') {
+  while (focusRow && focusRow.nodeName !== "X-ROW") {
     focusRow = focusRow.parentNode;
   }
 
   if (!focusRow) {
     console.error(
-      'Selection focus is not rooted in a row node: ' +
-        selection.focusNode.nodeName,
+      "Selection focus is not rooted in a row node: " +
+        selection.focusNode.nodeName
     );
     return;
   }
@@ -100,10 +100,10 @@ hterm.ScrollPort.Selection.prototype.sync = function() {
     // in a single node.
     var firstNode = this.findFirstChild(anchorRow, [
       selection.anchorNode,
-      selection.focusNode,
+      selection.focusNode
     ]);
 
-    if (!firstNode) throw new Error('Unexpected error syncing selection.');
+    if (!firstNode) throw new Error("Unexpected error syncing selection.");
 
     if (firstNode == selection.anchorNode) {
       anchorFirst();
@@ -116,7 +116,7 @@ hterm.ScrollPort.Selection.prototype.sync = function() {
 };
 
 hterm.ScrollPort.prototype.decorate = function() {
-  this.div_ = window.document.createElement('div');
+  this.div_ = window.document.createElement("div");
   window.document.body.appendChild(this.div_);
   //this.iframe_ = window.document.body; //div.ownerDocument.createElement('iframe');
   //this.iframe_.style.cssText =
@@ -124,34 +124,34 @@ hterm.ScrollPort.prototype.decorate = function() {
 
   ////div.appendChild(this.iframe_);
 
-  window.addEventListener('resize', this.onResize_.bind(this));
+  window.addEventListener("resize", this.onResize_.bind(this));
 
   var doc = window.document;
   this.document_ = doc;
   doc.body.style.cssText =
-    'margin: 0px;' +
-    'padding: 0px;' +
-    'height: 100%;' +
-    'width: 100%;' +
-    'overflow: hidden;' +
-    'cursor: var(--hterm-mouse-cursor-style);' +
-    '-webkit-user-select: none;' +
-    '-moz-user-select: none;';
+    "margin: 0px;" +
+    "padding: 0px;" +
+    "height: 100%;" +
+    "width: 100%;" +
+    "overflow: hidden;" +
+    "cursor: var(--hterm-mouse-cursor-style);" +
+    "-webkit-user-select: none;" +
+    "-moz-user-select: none;";
 
-  var style = doc.createElement('style');
+  var style = doc.createElement("style");
   style.textContent =
-    'x-row {' +
-    '  display: block;' +
-    '  height: var(--hterm-charsize-height);' +
-    '  line-height: var(--hterm-charsize-height);' +
-    '  isolation: isolate;' +
-    '}';
+    "x-row {" +
+    "  display: block;" +
+    "  height: var(--hterm-charsize-height);" +
+    "  line-height: var(--hterm-charsize-height);" +
+    "  isolation: isolate;" +
+    "}";
   doc.head.appendChild(style);
 
-  this.userCssLink_ = doc.createElement('link');
-  this.userCssLink_.setAttribute('rel', 'stylesheet');
+  this.userCssLink_ = doc.createElement("link");
+  this.userCssLink_.setAttribute("rel", "stylesheet");
 
-  this.userCssText_ = doc.createElement('style');
+  this.userCssText_ = doc.createElement("style");
   doc.head.appendChild(this.userCssText_);
 
   // TODO(rginda): Sorry, this 'screen_' isn't the same thing as hterm.Screen
@@ -163,38 +163,38 @@ hterm.ScrollPort.prototype.decorate = function() {
   // that doesn't make sense here, and might inadvertently mung or save input.
   // Some of these attributes are standard while others are browser specific,
   // but should be safely ignored by other browsers.
-  this.screen_ = doc.createElement('x-screen');
-  this.screen_.setAttribute('tabindex', '-1');
+  this.screen_ = doc.createElement("x-screen");
+  this.screen_.setAttribute("tabindex", "-1");
   this.screen_.style.cssText =
-    'caret-color: transparent;' +
-    'display: block;' +
-    'font-family: monospace;' +
-    'font-size: 15px;' +
-    'overflow: hidden;' +
-    'white-space: pre;' +
-    'width: 100%;' +
-    'margin: 0px;' +
-    'padding: 0px;' +
-    'height: 100%;' +
-    'width: 100%;' +
-    'touch-atcion: manipulation;' +
-    'cursor: var(--hterm-mouse-cursor-style);' +
-    'outline: none !important';
+    "caret-color: transparent;" +
+    "display: block;" +
+    "font-family: monospace;" +
+    "font-size: 15px;" +
+    "overflow: hidden;" +
+    "white-space: pre;" +
+    "width: 100%;" +
+    "margin: 0px;" +
+    "padding: 0px;" +
+    "height: 100%;" +
+    "width: 100%;" +
+    "touch-atcion: manipulation;" +
+    "cursor: var(--hterm-mouse-cursor-style);" +
+    "outline: none !important";
 
   doc.body.appendChild(this.screen_);
 
   //window.addEventListener('scroll', this.onScroll_.bind(this));
   //window.addEventListener('wheel', this.onScrollWheel_.bind(this));
-  this.screen_.addEventListener('touchstart', this.on_touchstart_.bind(this));
-  this.screen_.addEventListener('touchmove', this.on_touchmove_.bind(this));
-  this.screen_.addEventListener('touchend', this.on_touchend_.bind(this));
-  this.screen_.addEventListener('touchcancel', this.on_touchcancel_.bind(this));
+  this.screen_.addEventListener("touchstart", this.on_touchstart_.bind(this));
+  this.screen_.addEventListener("touchmove", this.on_touchmove_.bind(this));
+  this.screen_.addEventListener("touchend", this.on_touchend_.bind(this));
+  this.screen_.addEventListener("touchcancel", this.on_touchcancel_.bind(this));
 
-  this.screen_.addEventListener('copy', this.onCopy_.bind(this));
-  this.screen_.addEventListener('paste', this.onPaste_.bind(this));
-  this.screen_.addEventListener('drop', this.onDragAndDrop_.bind(this));
+  this.screen_.addEventListener("copy", this.onCopy_.bind(this));
+  this.screen_.addEventListener("paste", this.onPaste_.bind(this));
+  this.screen_.addEventListener("drop", this.onDragAndDrop_.bind(this));
 
-  doc.body.addEventListener('keydown', this.onBodyKeyDown_.bind(this));
+  doc.body.addEventListener("keydown", this.onBodyKeyDown_.bind(this));
 
   // Add buttons to make accessible scrolling through terminal history work
   // well. These are positioned off-screen until they are selected, at which
@@ -216,27 +216,27 @@ hterm.ScrollPort.prototype.decorate = function() {
   // Note: we use a <div> rather than a <button> because we don't want it to be
   // focusable. If it's focusable this interferes with the contenteditable
   // focus.
-  this.scrollUpButton_ = this.document_.createElement('div');
-  this.scrollUpButton_.id = 'hterm:a11y:page-up';
-  this.scrollUpButton_.innerText = hterm.msg('BUTTON_PAGE_UP', [], 'Page up');
-  this.scrollUpButton_.setAttribute('role', 'button');
+  this.scrollUpButton_ = this.document_.createElement("div");
+  this.scrollUpButton_.id = "hterm:a11y:page-up";
+  this.scrollUpButton_.innerText = hterm.msg("BUTTON_PAGE_UP", [], "Page up");
+  this.scrollUpButton_.setAttribute("role", "button");
   this.scrollUpButton_.style.cssText = scrollButtonStyle;
-  this.scrollUpButton_.style.top = -scrollButtonTotalHeight + 'px';
-  this.scrollUpButton_.addEventListener('click', this.scrollPageUp.bind(this));
+  this.scrollUpButton_.style.top = -scrollButtonTotalHeight + "px";
+  this.scrollUpButton_.addEventListener("click", this.scrollPageUp.bind(this));
 
-  this.scrollDownButton_ = this.document_.createElement('div');
-  this.scrollDownButton_.id = 'hterm:a11y:page-down';
+  this.scrollDownButton_ = this.document_.createElement("div");
+  this.scrollDownButton_.id = "hterm:a11y:page-down";
   this.scrollDownButton_.innerText = hterm.msg(
-    'BUTTON_PAGE_DOWN',
+    "BUTTON_PAGE_DOWN",
     [],
-    'Page down',
+    "Page down"
   );
-  this.scrollDownButton_.setAttribute('role', 'button');
+  this.scrollDownButton_.setAttribute("role", "button");
   this.scrollDownButton_.style.cssText = scrollButtonStyle;
-  this.scrollDownButton_.style.bottom = -scrollButtonTotalHeight + 'px';
+  this.scrollDownButton_.style.bottom = -scrollButtonTotalHeight + "px";
   this.scrollDownButton_.addEventListener(
-    'click',
-    this.scrollPageDown.bind(this),
+    "click",
+    this.scrollPageDown.bind(this)
   );
 
   // We only allow the scroll buttons to display after a delay, otherwise the
@@ -247,7 +247,7 @@ hterm.ScrollPort.prototype.decorate = function() {
   setTimeout(() => {
     this.allowScrollButtonsToDisplay_ = true;
   }, 500);
-  this.document_.addEventListener('selectionchange', () => {
+  this.document_.addEventListener("selectionchange", () => {
     this.selection.sync();
 
     if (!this.allowScrollButtonsToDisplay_) return;
@@ -262,63 +262,63 @@ hterm.ScrollPort.prototype.decorate = function() {
       selectedElement = selection.anchorNode.parentElement;
     }
     if (accessibilityEnabled && selectedElement == this.scrollUpButton_) {
-      this.scrollUpButton_.style.top = '0px';
+      this.scrollUpButton_.style.top = "0px";
     } else {
-      this.scrollUpButton_.style.top = -scrollButtonTotalHeight + 'px';
+      this.scrollUpButton_.style.top = -scrollButtonTotalHeight + "px";
     }
     if (accessibilityEnabled && selectedElement == this.scrollDownButton_) {
-      this.scrollDownButton_.style.bottom = '0px';
+      this.scrollDownButton_.style.bottom = "0px";
     } else {
-      this.scrollDownButton_.style.bottom = -scrollButtonTotalHeight + 'px';
+      this.scrollDownButton_.style.bottom = -scrollButtonTotalHeight + "px";
     }
   });
 
   this.screen_.appendChild(this.scrollUpButton_);
 
   // This is the main container for the fixed rows.
-  this.rowNodes_ = doc.createElement('div');
-  this.rowNodes_.id = 'hterm:row-nodes';
+  this.rowNodes_ = doc.createElement("div");
+  this.rowNodes_.id = "hterm:row-nodes";
   this.rowNodes_.style.cssText =
-    'display: block;' +
-    'position: absolute;' +
-    'top: 0;' +
-    'left: 0;' +
-    'right: 0;' +
-    'bottom: 0;' +
-    'background-color: inherit;' +
-    'overflow: hidden;' +
-    '-webkit-user-select: text;' +
-    '-moz-user-select: text;';
+    "display: block;" +
+    "position: absolute;" +
+    "top: 0;" +
+    "left: 0;" +
+    "right: 0;" +
+    "bottom: 0;" +
+    "background-color: inherit;" +
+    "overflow: hidden;" +
+    "-webkit-user-select: text;" +
+    "-moz-user-select: text;";
   this.screen_.appendChild(this.rowNodes_);
 
   // Two nodes to hold offscreen text during the copy event.
-  this.topSelectBag_ = doc.createElement('x-select-bag');
+  this.topSelectBag_ = doc.createElement("x-select-bag");
   this.topSelectBag_.style.cssText =
-    'display: block;' +
-    'overflow: hidden;' +
-    'height: var(--hterm-charsize-height);' +
-    'white-space: pre;';
+    "display: block;" +
+    "overflow: hidden;" +
+    "height: var(--hterm-charsize-height);" +
+    "white-space: pre;";
 
   this.bottomSelectBag_ = this.topSelectBag_.cloneNode();
 
   // Nodes above the top fold and below the bottom fold are hidden.  They are
   // only used to hold rows that are part of the selection but are currently
   // scrolled off the top or bottom of the visible range.
-  this.topFold_ = doc.createElement('x-fold');
-  this.topFold_.id = 'hterm:top-fold-for-row-selection';
-  this.topFold_.style.cssText = 'display: block;';
+  this.topFold_ = doc.createElement("x-fold");
+  this.topFold_.id = "hterm:top-fold-for-row-selection";
+  this.topFold_.style.cssText = "display: block;";
   this.rowNodes_.appendChild(this.topFold_);
-  this._renderDom = doc.createElement('div');
-  this._renderDom.id = 'hterm:renderer';
+  this._renderDom = doc.createElement("div");
+  this._renderDom.id = "hterm:renderer";
   this.rowNodes_.appendChild(this._renderDom);
 
   this.renderRef = ReactDOM.render(
     React.createElement(RRowList),
-    this._renderDom,
+    this._renderDom
   );
 
   this.bottomFold_ = this.topFold_.cloneNode();
-  this.bottomFold_.id = 'hterm:bottom-fold-for-row-selection';
+  this.bottomFold_.id = "hterm:bottom-fold-for-row-selection";
   this.rowNodes_.appendChild(this.bottomFold_);
 
   // This hidden div accounts for the vertical space that would be consumed by
@@ -336,7 +336,7 @@ hterm.ScrollPort.prototype.decorate = function() {
   //this.screen_.appendChild(this.scrollArea_);
   var self = this;
   __screenSize = hterm.getClientSize(this.screen_);
-  this.scroller_ = new Scroller(
+  this.scroller_ = new WKScroller(
     function render(left, top, zoom) {
       if (__pageYOffset === top) {
         return;
@@ -344,14 +344,14 @@ hterm.ScrollPort.prototype.decorate = function() {
       __pageYOffset = top || 0;
       self.onScroll_();
     },
-    { scrollingX: false },
+    { scrollingX: false }
   );
 
   this.scroller_.setDimensions(
     __screenSize.width,
     __screenSize.height,
     __screenSize.width,
-    __screenSize.height,
+    __screenSize.height
   );
 
   // This svg element is used to detect when the browser is zoomed.  It must be
@@ -359,54 +359,54 @@ hterm.ScrollPort.prototype.decorate = function() {
   // TODO(rginda): This means that hterm nested in an iframe will not correctly
   // detect browser zoom level.  We should come up with a better solution.
   // Note: This must be http:// else Chrome cannot create the element correctly.
-  var xmlns = 'http://www.w3.org/2000/svg';
-  this.svg_ = window.document.createElementNS(xmlns, 'svg');
-  this.svg_.id = 'hterm:zoom-detector';
-  this.svg_.setAttribute('xmlns', xmlns);
-  this.svg_.setAttribute('version', '1.1');
+  var xmlns = "http://www.w3.org/2000/svg";
+  this.svg_ = window.document.createElementNS(xmlns, "svg");
+  this.svg_.id = "hterm:zoom-detector";
+  this.svg_.setAttribute("xmlns", xmlns);
+  this.svg_.setAttribute("version", "1.1");
   this.svg_.style.cssText =
-    'position: absolute;' + 'top: 0;' + 'left: 0;' + 'visibility: hidden';
+    "position: absolute;" + "top: 0;" + "left: 0;" + "visibility: hidden";
 
   // We send focus to this element just before a paste happens, so we can
   // capture the pasted text and forward it on to someone who cares.
-  this.pasteTarget_ = doc.createElement('textarea');
-  this.pasteTarget_.id = 'hterm:ctrl-v-paste-target';
-  this.pasteTarget_.setAttribute('tabindex', '-1');
+  this.pasteTarget_ = doc.createElement("textarea");
+  this.pasteTarget_.id = "hterm:ctrl-v-paste-target";
+  this.pasteTarget_.setAttribute("tabindex", "-1");
   this.pasteTarget_.style.cssText =
-    'position: absolute;' +
-    'height: 1px;' +
-    'width: 1px;' +
-    'left: 0px; ' +
-    'bottom: 0px;' +
-    'opacity: 0';
+    "position: absolute;" +
+    "height: 1px;" +
+    "width: 1px;" +
+    "left: 0px; " +
+    "bottom: 0px;" +
+    "opacity: 0";
   this.pasteTarget_.contentEditable = true;
 
   this.screen_.appendChild(this.pasteTarget_);
   this.pasteTarget_.addEventListener(
-    'textInput',
-    this.handlePasteTargetTextInput_.bind(this),
+    "textInput",
+    this.handlePasteTargetTextInput_.bind(this)
   );
 
   this.resize();
 };
 
 hterm.ScrollPort.prototype.on_touchstart_ = function(e) {
-  this.scroller_.doTouchStart(e.touches, e.timeStamp);
+  //this.scroller_.doTouchStart(e.touches, e.timeStamp);
 };
 
 hterm.ScrollPort.prototype.on_touchmove_ = function(e) {
-  this.scroller_.doTouchMove(e.touches, e.timeStamp, e.scale);
-  if (this.scroller_.__isDragging) {
-    e.preventDefault();
-  }
+  //this.scroller_.doTouchMove(e.touches, e.timeStamp, e.scale);
+  //if (this.scroller_.__isDragging) {
+  //e.preventDefault();
+  //}
 };
 
 hterm.ScrollPort.prototype.on_touchend_ = function(e) {
-  this.scroller_.doTouchEnd(e.timeStamp);
+  // this.scroller_.doTouchEnd(e.timeStamp);
 };
 
 hterm.ScrollPort.prototype.on_touchcancel_ = function(e) {
-  this.scroller_.doTouchEnd(e.timeStamp);
+  //  this.scroller_.doTouchEnd(e.timeStamp);
 };
 
 hterm.ScrollPort.prototype.focus = function() {
@@ -445,7 +445,7 @@ hterm.ScrollPort.prototype.scheduleInvalidate = function() {
   }, 0);
 };
 
-var __currentTransform = '';
+var __currentTransform = "";
 
 hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   var screenSize = this.getScreenSize();
@@ -457,7 +457,7 @@ hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   // in a terminal, so we floor any fractional row count.
   this.visibleRowCount = lib.f.smartFloorDivide(
     screenSize.height,
-    this.characterSize.height,
+    this.characterSize.height
   );
 
   // Then compute the height of our integral number of rows.
@@ -469,9 +469,9 @@ hterm.ScrollPort.prototype.syncRowNodesDimensions_ = function() {
   this.visibleRowTopMargin = 0;
   this.visibleRowBottomMargin = screenSize.height - visibleRowsHeight;
 
-  var transform = '';
+  var transform = "";
   if (__pageYOffset < 0) {
-    transform = 'translate3d(0, ' + -__pageYOffset + 'px, 0)';
+    transform = "translate3d(0, " + -__pageYOffset + "px, 0)";
   }
 
   if (transform !== __currentTransform) {
@@ -503,7 +503,7 @@ hterm.ScrollPort.prototype.syncScrollHeight = function() {
     __screenSize.width,
     __screenSize.height,
     __screenSize.width,
-    __prevHeight,
+    __prevHeight
   );
 };
 
@@ -540,7 +540,7 @@ hterm.ScrollPort.prototype.redraw_ = function() {
 
 hterm.ScrollPort.prototype.drawVisibleRows_ = function(
   topRowIndex,
-  bottomRowIndex,
+  bottomRowIndex
 ) {
   var self = this;
 
@@ -554,7 +554,7 @@ hterm.ScrollPort.prototype.drawVisibleRows_ = function(
 
   var targetDrawCount = Math.min(
     this.visibleRowCount,
-    this.rowProvider_.getRowCount(),
+    this.rowProvider_.getRowCount()
   );
 
   var rows = [];
@@ -653,7 +653,7 @@ hterm.ScrollPort.prototype.onScroll_ = function(e) {
   }
 
   this.redraw_();
-  this.publish('scroll', { scrollPort: this });
+  this.publish("scroll", { scrollPort: this });
 };
 
 hterm.ScrollPort.prototype.onScrollWheel = function(e) {};
@@ -664,7 +664,7 @@ hterm.ScrollPort.prototype.onResize_ = function(e) {
     __screenSize.width,
     __screenSize.height,
     null,
-    __prevHeight,
+    __prevHeight
   );
   // Re-measure, since onResize also happens for browser zoom changes.
   this.syncCharacterSize();
@@ -704,11 +704,11 @@ hterm.ScrollPort.prototype.onCopy_ = function(e) {
 
     this.topSelectBag_.textContent = this.rowProvider_.getRowsText(
       this.selection.startRow.rowIndex + 1,
-      endBackfillIndex,
+      endBackfillIndex
     );
     this.rowNodes_.insertBefore(
       this.topSelectBag_,
-      this.selection.startRow.nextSibling,
+      this.selection.startRow.nextSibling
     );
     this.syncRowNodesDimensions_();
   }
@@ -727,7 +727,7 @@ hterm.ScrollPort.prototype.onCopy_ = function(e) {
 
     this.bottomSelectBag_.textContent = this.rowProvider_.getRowsText(
       startBackfillIndex,
-      this.selection.endRow.rowIndex,
+      this.selection.endRow.rowIndex
     );
     this.rowNodes_.insertBefore(this.bottomSelectBag_, this.selection.endRow);
   }
@@ -736,12 +736,17 @@ hterm.ScrollPort.prototype.onCopy_ = function(e) {
 function __getTextWidth(text, font) {
   // if given, use cached canvas for better performance
   // else, create new canvas
-  var canvas = __getTextWidth.canvas || (__getTextWidth.canvas = document.createElement("canvas"));
+  var canvas =
+    __getTextWidth.canvas ||
+    (__getTextWidth.canvas = document.createElement("canvas"));
   var context = canvas.getContext("2d");
   context.font = font;
   var metrics = context.measureText(text);
-  return {width:metrics.width, height: metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent}
-};
+  return {
+    width: metrics.width,
+    height: metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent
+  };
+}
 
 hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
   // Number of lines used to average the height of a single character.
@@ -749,40 +754,39 @@ hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
   // Number of chars per line used to average the width of a single character.
   var lineLength = 100;
 
-  var domMethod = window.fontSizeDetectionMethod !== 'canvas';
+  var domMethod = window.fontSizeDetectionMethod !== "canvas";
 
   if (!this.ruler_) {
-    this.ruler_ = this.document_.createElement('div');
-    this.ruler_.id = 'hterm:ruler-character-size';
+    this.ruler_ = this.document_.createElement("div");
+    this.ruler_.id = "hterm:ruler-character-size";
     this.ruler_.style.cssText =
-      'position: absolute;' +
-      'top: 0;' +
-      'left: 0;' +
-      'visibility: hidden;' +
-      'height: auto !important;' +
-      'width: auto !important;';
+      "position: absolute;" +
+      "top: 0;" +
+      "left: 0;" +
+      "visibility: hidden;" +
+      "height: auto !important;" +
+      "width: auto !important;";
 
     // We need to put the text in a span to make the size calculation
     // work properly in Firefox
     if (domMethod) {
-      this.rulerSpan_ = this.document_.createElement('span');
-      this.rulerSpan_.id = 'hterm:ruler-span-workaround';
-      this.rulerSpan_.innerHTML = ('X'.repeat(lineLength) + '\r').repeat(
-        numberOfLines,
+      this.rulerSpan_ = this.document_.createElement("span");
+      this.rulerSpan_.id = "hterm:ruler-span-workaround";
+      this.rulerSpan_.innerHTML = ("X".repeat(lineLength) + "\r").repeat(
+        numberOfLines
       );
       this.ruler_.appendChild(this.rulerSpan_);
     }
 
-    this.rulerBaseline_ = this.document_.createElement('span');
-    this.rulerBaseline_.id = 'hterm:ruler-baseline';
+    this.rulerBaseline_ = this.document_.createElement("span");
+    this.rulerBaseline_.id = "hterm:ruler-baseline";
     // We want to collapse it on the baseline
-    this.rulerBaseline_.style.fontSize = '0px';
-    this.rulerBaseline_.textContent = 'X';
+    this.rulerBaseline_.style.fontSize = "0px";
+    this.rulerBaseline_.textContent = "X";
   }
 
-
   if (this.rulerSpan_) {
-    this.rulerSpan_.style.fontWeight = opt_weight || '';
+    this.rulerSpan_.style.fontWeight = opt_weight || "";
   }
 
   this.rowNodes_.appendChild(this.ruler_);
@@ -792,13 +796,13 @@ hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight) {
     var rulerSize = hterm.getClientSize(this.rulerSpan_);
     size = new hterm.Size(
       rulerSize.width / lineLength,
-      rulerSize.height / numberOfLines,
+      rulerSize.height / numberOfLines
     );
   } else {
     var font = this.screen_.style.font;
-    var s = __getTextWidth('QWER1YUIOX'.repeat(10), font)
+    var s = __getTextWidth("QWER1YUIOX".repeat(10), font);
 
-    size = new hterm.Size(s.width /  100, s.height);
+    size = new hterm.Size(s.width / 100, s.height);
   }
 
   this.ruler_.insertBefore(this.rulerBaseline_, this.ruler_.childNodes[0]);
@@ -822,9 +826,9 @@ hterm.ScrollPort.prototype.resize = function() {
   this.syncRowNodesDimensions_();
 
   var self = this;
-  this.publish('resize', { scrollPort: this }, function() {
+  this.publish("resize", { scrollPort: this }, function() {
     self.scroller_.__callback = () => {};
-    self.scroller_ = new Scroller(
+    self.scroller_ = new WKScroller(
       function render(left, top, zoom) {
         if (__pageYOffset === top) {
           return;
@@ -832,14 +836,14 @@ hterm.ScrollPort.prototype.resize = function() {
         __pageYOffset = top || 0;
         self.onScroll_();
       },
-      { scrollingX: false },
+      { scrollingX: false }
     );
 
     self.scroller_.setDimensions(
       __screenSize.width,
       __screenSize.height,
       __screenSize.width,
-      __prevHeight,
+      __prevHeight
     );
     var pos = __prevHeight - __screenSize.height;
     if (pos < 0) {
