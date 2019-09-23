@@ -827,6 +827,7 @@ hterm.ScrollPort.prototype.resize = function() {
 
   var self = this;
   this.publish("resize", { scrollPort: this }, function() {
+    /*
     self.scroller_.__callback = () => {};
     self.scroller_ = new WKScroller(
       function render(left, top, zoom) {
@@ -838,6 +839,7 @@ hterm.ScrollPort.prototype.resize = function() {
       },
       { scrollingX: false }
     );
+    */
 
     self.scroller_.setDimensions(
       __screenSize.width,

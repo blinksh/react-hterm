@@ -5,6 +5,8 @@ function __nsEncodeCGSize(width, height) {
 }
 
 export default class WKScroller {
+  _x = 0;
+  _y = 0;
   _viewWidth = 0;
   _viewHeight = 0;
   _contentWidth = 0;
@@ -29,19 +31,29 @@ export default class WKScroller {
     contentWidth: number | null,
     contentHeight: number | null
   ) {
-    if (viewWidth != null) {
+    let needToPost = false;
+
+    if (viewWidth != null && this._viewWidth !== viewWidth) {
       this._viewWidth = viewWidth;
+      needToPost = true;
     }
 
-    if (viewHeight != null) {
+    if (viewHeight != null && this._viewHeight !== viewHeight) {
       this._viewHeight = viewHeight;
+      needToPost = true;
     }
-    if (contentWidth != null) {
+    if (contentWidth != null && this._contentWidth !== contentWidth) {
       this._contentWidth = contentWidth;
+      needToPost = true;
     }
 
-    if (contentHeight != null) {
+    if (contentHeight != null && this._contentHeight !== contentHeight) {
       this._contentHeight = contentHeight;
+      needToPost = true;
+    }
+
+    if (!needToPost) {
+      return;
     }
 
     this._postMessage({
@@ -57,6 +69,11 @@ export default class WKScroller {
     }
   }
   scrollTo(x, y, animated) {
+    if (this._x === x && this._y === y) {
+      return;
+    }
+    this._x = x;
+    this._y = y;
     this._postMessage({ op: "scrollTo", x, y, animated });
   }
 }
