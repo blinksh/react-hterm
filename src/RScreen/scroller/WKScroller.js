@@ -5,8 +5,8 @@ function __nsEncodeCGSize(width, height) {
 }
 
 export default class WKScroller {
-  _x = 0;
-  _y = 0;
+  _x = -1;
+  _y = -1;
   _viewWidth = 0;
   _viewHeight = 0;
   _contentWidth = 0;
@@ -64,6 +64,8 @@ export default class WKScroller {
   }
 
   reportScroll(x: number, y: number, z: number | undefined) {
+    this._x = x;
+    this._y = y;
     if (this._callback) {
       this._callback(x, y, z);
     }
