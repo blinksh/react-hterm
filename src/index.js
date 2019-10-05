@@ -1,14 +1,17 @@
 // @flow
 
-import { hterm, lib } from './hterm_all';
-require('./index.css');
-require('./RScreen/hterm_vs.patched');
-require('./RScreen/ScrollPort');
-require('./RScreen/Screen');
-require('./RScreen/Terminal');
+import { hterm, lib } from "./hterm_all";
+import processKeys from "./readline/keys";
+require("./index.css");
+require("./RScreen/hterm_vs.patched");
+require("./RScreen/ScrollPort");
+require("./RScreen/Screen");
+require("./RScreen/Terminal");
 
 window.hterm = hterm;
 window.lib = lib;
+window.processKyes = processKeys;
+
 /*
 // If you are a cross-browser web app and want in-memory storage only.
 hterm.defaultStorage = new lib.Storage.Memory();

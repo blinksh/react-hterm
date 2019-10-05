@@ -11,12 +11,13 @@ export default class WKScroller {
   _viewHeight = 0;
   _contentWidth = 0;
   _contentHeight = 0;
+  _callback: any = null;
 
   constructor(callback) {
     this._callback = callback;
   }
 
-  _postMessage(message) {
+  _postMessage(message: any) {
     let handler = window.webkit.messageHandlers.wkScroller;
     if (handler) {
       handler.postMessage(message);
@@ -70,7 +71,7 @@ export default class WKScroller {
       this._callback(x, y, z);
     }
   }
-  scrollTo(x, y, animated) {
+  scrollTo(x: number, y: number, animated: boolean) {
     if (this._x === x && this._y === y) {
       return;
     }
