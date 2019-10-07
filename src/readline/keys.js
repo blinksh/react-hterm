@@ -105,12 +105,13 @@ type KeyNameType =
   | "clear"
   | "end";
 
-type KeyType = {
+export type KeyType = {
   sequence: string,
   name: ?(KeyNameType | string),
   ctrl: boolean,
   meta: boolean,
   shift: boolean,
+  fulName: string,
   code: ?string,
   ch: ?string
 };
@@ -138,6 +139,7 @@ export default function processKeys(s: string, callback: emitKeysCallback) {
         ctrl: false,
         meta: false,
         shift: false,
+        fullName: "",
         code: null,
         ch: null
       }: KeyType),
@@ -466,6 +468,19 @@ export default function processKeys(s: string, callback: emitKeysCallback) {
     if (s.length === 1) {
       key.ch = s;
     }
+
+    let fullName = key.name || "";
+    if (key.shift) {
+      fullName = "S-" + fullName;
+    }
+
+    if (key.meta) {
+      fullName = "M-" + fullName;
+    }
+    if (key.ctrl) {
+      fullName = "C-" + fullName;
+    }
+    key.fullName = fullName;
 
     callback(key);
   });
