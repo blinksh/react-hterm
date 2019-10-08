@@ -1,12 +1,15 @@
 // @flow
 
 import keys, { type KeyType } from "./keys.js";
+import { lib } from "../hterm_all.js";
 
 export default class Prompt {
   _prompt: string;
   _term: any;
   _cursorCol: number = 0;
   _value: string = "";
+  _startCol: -1;
+  _startRow: 0;
 
   constructor(prompt: string, term: any) {
     this._prompt = prompt;
@@ -17,26 +20,47 @@ export default class Prompt {
 
   _onKey = (key: KeyType) => {
     console.log(key);
+
     let term = this._term;
     let col = term.getCursorColumn();
     switch (key.fullName) {
-      case "C-a":
-        term.setCursorColumn(0);
+      case "M-f":
+      case "M-right":
+        this._forwardWord(col);
         break;
+      case "M-b":
+      case "M-left":
+        this._backWord(col);
+        break;
+      case "home":
+      case "C-a":
+        term.setCursorColumn(this._startCol);
+        break;
+      case "end":
       case "C-e":
-        term.setCursorColumn(0);
+        let width = lib.wc.strWidth(this._lineText());
+        if (width > 0) {
+          term.setCursorColumn(width);
+        }
         break;
       case "C-k":
         term.eraseToRight();
         break;
       case "C-u":
-        term.eraseToLeft();
+        let count = col - this._startCol;
+        if (count > 0) {
+          term.screen_.deleteChars(count);
+          term.setCursorColumn(this._startCol);
+        } else {
+          term.ringBell();
+        }
         break;
       case "C-l":
-        term.eraseLine();
+        term.setCursorColumn(this._startCol);
+        term.eraseToRight();
         break;
       case "backspace":
-        if (col > 0) {
+        if (col > this._startCol) {
           term.setCursorColumn(col - 1);
           term.deleteChars(1);
         } else {
@@ -48,7 +72,7 @@ export default class Prompt {
         break;
       case "C-b":
       case "left":
-        if (col > 0) {
+        if (col > this._startCol) {
           term.cursorLeft();
         } else {
           term.ringBell();
@@ -59,7 +83,7 @@ export default class Prompt {
         term.cursorRight();
         break;
       case "enter":
-        let text = this._lineText();
+        let text = lib.wc.substr(this._lineText(), this._startCol);
         term.formFeed();
         if (text && text.length > 0) {
           let op = "line";
@@ -76,6 +100,34 @@ export default class Prompt {
     term.setCursorVisible(true);
   };
 
+  _forwardWord(col: number) {
+    let term = this._term;
+    let text = this._lineText();
+    let right = lib.wc.substr(text, col);
+    let match = /^\W*\w+/.exec(right);
+    if (match) {
+      let pos = col + lib.wc.strWidth(match[0]);
+      //if (pos < this._startCol) {
+      //pos = this._startCol;
+      //}
+      term.setCursorColumn(pos);
+    }
+  }
+
+  _backWord(col: number) {
+    let term = this._term;
+    let text = this._lineText();
+    let left = lib.wc.substr(text, this._startCol, col - this._startCol);
+    let match = /\w+\W*$/.exec(left);
+    if (match) {
+      let pos = col - lib.wc.strWidth(match[0]);
+      if (pos < this._startCol) {
+        pos = this._startCol;
+      }
+      term.setCursorColumn(pos);
+    }
+  }
+
   _lineText(): string {
     let term = this._term;
     let startRow = term.screen_.getLineStartRow_(term.screen_.cursorRow());
@@ -91,6 +143,14 @@ export default class Prompt {
   }
 
   processInput(str: string) {
+    if (this._startCol < 0) {
+      this._startCol = this._term.getCursorColumn();
+      this._startRow = this._term.getCursorRow();
+    }
     keys(str, this._onKey);
+  }
+
+  resetStartCol() {
+    this._startCol = -1;
   }
 }
