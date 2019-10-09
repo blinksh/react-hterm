@@ -2,6 +2,8 @@
 
 import { hterm, lib } from "./hterm_all";
 import Prompt from "./readline/prompt";
+import KeystrokeVisualizer from "./readline/visualizer";
+
 require("./index.css");
 require("./RScreen/hterm_vs.patched");
 require("./RScreen/ScrollPort");
@@ -11,6 +13,7 @@ require("./RScreen/Terminal");
 window.hterm = hterm;
 window.lib = lib;
 window.TermPrompt = Prompt;
+window.KeystrokeVisualizer = KeystrokeVisualizer;
 
 /*
 // If you are a cross-browser web app and want in-memory storage only.

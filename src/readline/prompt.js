@@ -6,16 +6,26 @@ import { lib } from "../hterm_all.js";
 export default class Prompt {
   _prompt: string;
   _term: any;
-  _cursorCol: number = 0;
+  _cursor: number = 0;
+  _row: number = 0;
   _value: string = "";
-  _startCol: -1;
-  _startRow: 0;
+  _startCol = 0;
+  _startRow = 0;
 
   constructor(prompt: string, term: any) {
     this._prompt = prompt;
     this._term = term;
-    term.setInsertMode(true);
     term.setAutoCarriageReturn(true);
+  }
+
+  _setCursorColWithOverflow(col: number) {
+    let screen = this._term.screen_;
+    let width = screen.columnCount_;
+    let r = (col / width) | 0;
+    let c = col % width;
+
+    screen.setCursorPosition(this._startRow + r, c);
+    console.log("setCursorPosition", this._startRow, this._startCol, r, c);
   }
 
   _onKey = (key: KeyType) => {
@@ -24,6 +34,8 @@ export default class Prompt {
     let term = this._term;
     let col = term.getCursorColumn();
     switch (key.fullName) {
+      case "tab":
+        return;
       case "M-f":
       case "M-right":
         this._forwardWord(col);
@@ -34,14 +46,11 @@ export default class Prompt {
         break;
       case "home":
       case "C-a":
-        term.setCursorColumn(this._startCol);
+        this._cursor = 0;
         break;
       case "end":
       case "C-e":
-        let width = lib.wc.strWidth(this._lineText());
-        if (width > 0) {
-          term.setCursorColumn(width);
-        }
+        this._cursor = lib.wc.strWidth(this._value);
         break;
       case "C-k":
         term.eraseToRight();
@@ -50,7 +59,7 @@ export default class Prompt {
         let count = col - this._startCol;
         if (count > 0) {
           term.screen_.deleteChars(count);
-          term.setCursorColumn(this._startCol);
+          this._setCursorColWithOverflow(this._startCol);
         } else {
           term.ringBell();
         }
@@ -60,97 +69,175 @@ export default class Prompt {
         term.eraseToRight();
         break;
       case "backspace":
-        if (col > this._startCol) {
-          term.setCursorColumn(col - 1);
-          term.deleteChars(1);
-        } else {
+        if (this._cursor == 0) {
           term.ringBell();
+        } else {
+          //let width = lib.wc.strWidth(key.ch);
+          let left = lib.wc.substring(this._value, 0, this._cursor - 1);
+          let right = lib.wc.substr(this._value, this._cursor);
+          this._value = [left, right].join("");
+          this._cursor = lib.wc.strWidth(left);
         }
         break;
       case "C-d":
-        term.deleteChars(1);
+        {
+          let left = lib.wc.substring(this._value, 0, this._cursor);
+          let right = lib.wc.substr(this._value, this._cursor + 1);
+          this._value = [left, right].join("");
+          //this._cursor = lib.wc.strWidth(left);
+        }
         break;
       case "C-b":
       case "left":
-        if (col > this._startCol) {
-          term.cursorLeft();
-        } else {
+        this._cursor -= 1;
+        if (this._cursor < 0) {
+          this._cursor = 0;
           term.ringBell();
         }
         break;
       case "C-f":
       case "right":
-        term.cursorRight();
+        if (lib.wc.strWidth(this._value) > this._cursor) {
+          this._cursor += 1;
+        } else {
+          term.ringBell();
+        }
+        break;
+      case "C-p":
+      case "up":
+        this._moveUp();
+        break;
+      case "C-n":
+      case "down":
+        this._moveDown();
         break;
       case "enter":
-        let text = lib.wc.substr(this._lineText(), this._startCol);
+        this._cursor = lib.wc.strWidth(this._value);
+        this._render();
         term.formFeed();
-        if (text && text.length > 0) {
+        if (this._value && this._value.length > 0) {
           let op = "line";
-          let data = { text };
+          let data = { text: this._value };
           window.webkit.messageHandlers.interOp.postMessage({ op, data });
+          this._startCol = -1;
         }
-        break;
+        return;
       default:
         if (key.ch) {
-          term.print(key.ch);
+          let width = lib.wc.strWidth(key.ch);
+          let left = lib.wc.substring(this._value, 0, this._cursor);
+          let right = lib.wc.substr(this._value, this._cursor);
+          this._value = [left, key.ch, right].join("");
+          this._cursor += width;
         }
     }
-    // Sync cursor
-    term.setCursorVisible(true);
+
+    this._render();
   };
+
+  _moveUp() {
+    let term = this._term;
+    let screen = this._term.screen_;
+
+    let pos = this._cursor + this._startCol;
+    let r = (pos / screen.columnCount_) | 0;
+    if (r > 0) {
+      this._cursor -= screen.columnCount_;
+      if (this._cursor < 0) {
+        this._cursor = 0;
+      }
+    } else {
+      term.ringBell();
+    }
+  }
+
+  _moveDown() {
+    let term = this._term;
+    let screen = this._term.screen_;
+
+    let width = lib.wc.strWidth(this._value);
+    let pos = this._cursor + this._startCol;
+    let r = (pos / screen.columnCount_) | 0;
+    let lastR = (width / screen.columnCount_) | 0;
+    if (r < lastR) {
+      this._cursor += screen.columnCount_;
+      if (this._cursor > width) {
+        this._cursor = width;
+      }
+    } else {
+      term.ringBell();
+    }
+  }
 
   _forwardWord(col: number) {
     let term = this._term;
-    let text = this._lineText();
-    let right = lib.wc.substr(text, col);
+    let right = lib.wc.substr(this._value, this._cursor);
     let match = /^\W*\w+/.exec(right);
     if (match) {
-      let pos = col + lib.wc.strWidth(match[0]);
-      //if (pos < this._startCol) {
-      //pos = this._startCol;
-      //}
-      term.setCursorColumn(pos);
+      this._cursor += lib.wc.strWidth(match[0]);
     }
   }
 
   _backWord(col: number) {
     let term = this._term;
-    let text = this._lineText();
-    let left = lib.wc.substr(text, this._startCol, col - this._startCol);
+    let left = lib.wc.substring(this._value, 0, this._cursor);
     let match = /\w+\W*$/.exec(left);
     if (match) {
-      let pos = col - lib.wc.strWidth(match[0]);
-      if (pos < this._startCol) {
-        pos = this._startCol;
+      this._cursor -= lib.wc.strWidth(match[0]);
+      if (this._cursor < 0) {
+        this._cursor = 0;
       }
-      term.setCursorColumn(pos);
     }
   }
 
   _lineText(): string {
-    let term = this._term;
-    let startRow = term.screen_.getLineStartRow_(term.screen_.cursorRow());
-    return term.screen_.getLineText_(startRow);
+    this._value;
   }
 
-  render() {
+  _render() {
     let term = this._term;
-    term.setCursorColumn(0);
-    term.print(this._prompt);
+    let screen = this._term.screen_;
+    term.setCursorVisible(false);
+    term.setCursorPosition(this._startRow, this._startCol);
+
+    term.eraseBelow();
+
+    let pos = this._cursor + this._startCol;
+    let r = (pos / screen.columnCount_) | 0;
+    let c = pos % screen.columnCount_;
+
+    let moreRows = this._startRow + r + 1 - term.screenSize.height;
+    if (moreRows > 0) {
+      term.appendRows_(moreRows);
+      this._startRow -= moreRows;
+      term.setCursorPosition(this._startRow, this._startCol);
+    }
+
     term.print(this._value);
-    term.setCursorColumn(this._cursorCol);
+
+    term.setCursorPosition(this._startRow + r, c);
+    term.setCursorVisible(true);
   }
 
   processInput(str: string) {
     if (this._startCol < 0) {
+      this._value = "";
+      this._cursor = 0;
       this._startCol = this._term.getCursorColumn();
       this._startRow = this._term.getCursorRow();
     }
     keys(str, this._onKey);
   }
 
-  resetStartCol() {
+  reset() {
     this._startCol = -1;
+  }
+
+  resize() {
+    if (this._startCol < 0) {
+      return;
+    }
+
+    this._render();
   }
 }
