@@ -20,6 +20,10 @@ export default class Prompt {
     this._term = term;
   }
 
+  _valueStartCol() {
+    return this._startCol + lib.wc.strWidth(this._prompt);
+  }
+
   _onKey = (key: KeyType) => {
     let term = this._term;
     switch (key.fullName) {
@@ -139,7 +143,7 @@ export default class Prompt {
     let term = this._term;
     let screen = this._term.screen_;
 
-    let pos = this._cursor + this._startCol;
+    let pos = this._cursor + this._valueStartCol();
     let r = (pos / screen.columnCount_) | 0;
     if (r > 0) {
       this._cursor -= screen.columnCount_;
@@ -156,7 +160,7 @@ export default class Prompt {
     let screen = this._term.screen_;
 
     let width = lib.wc.strWidth(this._value);
-    let pos = this._cursor + this._startCol;
+    let pos = this._cursor + this._valueStartCol();
     let r = (pos / screen.columnCount_) | 0;
     let lastR = (width / screen.columnCount_) | 0;
     if (r < lastR) {
@@ -180,11 +184,12 @@ export default class Prompt {
   _backWord() {
     let left = lib.wc.substring(this._value, 0, this._cursor);
     let match = __backwardWordRegex.exec(left);
-    if (match) {
-      this._cursor -= lib.wc.strWidth(match[0]);
-      if (this._cursor < 0) {
-        this._cursor = 0;
-      }
+    if (!match) {
+      return;
+    }
+    this._cursor -= lib.wc.strWidth(match[0]);
+    if (this._cursor < 0) {
+      this._cursor = 0;
     }
   }
 
@@ -196,15 +201,14 @@ export default class Prompt {
     var left = lib.wc.substring(this._value, 0, this._cursor);
     let right = lib.wc.substr(this._value, this._cursor);
     let match = __backwardWordRegex.exec(left);
-    if (match) {
-      let width = lib.wc.strWidth(match[0]);
-      left = lib.wc.substring(this._value, 0, this._cursor - width);
-      this._value = [left, right].join("");
-      this._cursor -= width;
-      if (this._cursor < 0) {
-        this._cursor = 0;
-      }
+    if (!match) {
+      return;
     }
+
+    let width = lib.wc.strWidth(match[0]);
+    left = lib.wc.substring(this._value, 0, this._cursor - width);
+    this._value = [left, right].join("");
+    this._cursor = Math.max(0, this._cursor - width);
   }
 
   _deleteForwardWord() {
@@ -212,11 +216,12 @@ export default class Prompt {
     var right = lib.wc.substr(this._value, this._cursor);
 
     let match = __forwardWordRegex.exec(right);
-    if (match) {
-      let width = lib.wc.strWidth(match[0]);
-      right = lib.wc.substr(right, width);
-      this._value = [left, right].join("");
+    if (!match) {
+      return;
     }
+    let width = lib.wc.strWidth(match[0]);
+    right = lib.wc.substr(right, width);
+    this._value = [left, right].join("");
   }
 
   _uppercaseForwardWord() {
@@ -224,26 +229,30 @@ export default class Prompt {
     var right = lib.wc.substr(this._value, this._cursor);
 
     let match = __forwardWordRegex.exec(right);
-    if (match) {
-      let upperWord = match[0].toUpperCase();
-      let width = lib.wc.strWidth(upperWord);
-      right = lib.wc.substr(right, width);
-      this._value = [left, upperWord, right].join("");
-      this._cursor += width;
+    if (!match) {
+      return;
     }
+    let upperWord = match[0].toUpperCase();
+    let width = lib.wc.strWidth(upperWord);
+    right = lib.wc.substr(right, width);
+    this._value = [left, upperWord, right].join("");
+    this._cursor += width;
   }
 
   _render() {
     let term = this._term;
-    let screen = this._term.screen_;
+    let screenWidth = term.screen_.columnCount_;
+
     term.setCursorVisible(false);
     term.setCursorPosition(this._startRow, this._startCol);
 
     term.eraseBelow();
 
-    let pos = this._cursor + this._startCol;
-    let r = (pos / screen.columnCount_) | 0;
-    let c = pos % screen.columnCount_;
+    let valueWidth = lib.wc.strWidth(this._value);
+
+    let pos = valueWidth + this._valueStartCol();
+    let r = (pos / screenWidth) | 0;
+    let c = pos % screenWidth;
 
     let moreRows = this._startRow + r + 1 - term.screenSize.height;
     if (moreRows > 0) {
@@ -252,7 +261,12 @@ export default class Prompt {
       term.setCursorPosition(this._startRow, this._startCol);
     }
 
+    term.print(this._prompt);
     term.print(this._value);
+
+    pos = this._cursor + this._valueStartCol();
+    r = (pos / screenWidth) | 0;
+    c = pos % screenWidth;
 
     term.setCursorPosition(this._startRow + r, c);
     term.setCursorVisible(true);
@@ -280,39 +294,18 @@ export default class Prompt {
       return false;
     }
 
-    let term = this._term;
-    let screen = this._term.screen_;
-    let screenWidth = screen.columnCount_;
-
-    let c1 = this._startCol;
-    let r1 = this._startRow;
+    let dr = rm - this._startRow;
+    if (dr < 0) {
+      this._cursor = 0;
+      this._render();
+      return;
+    }
 
     let valueWidth = lib.wc.strWidth(this._value);
-    let end = valueWidth + this._startCol;
-    let r2 = (end / screenWidth) | (0 + this._startRow);
-    let c2 = end % screenWidth;
+    let screenWidth = this._term.screen_.columnCount_;
 
-    if (rm < r1 || (rm == r1 && cm < c1)) {
-      this._cursor = 0;
-      this._render();
-      return true;
-    }
-
-    /*
-    if (rm > r2 || (rm == r2 && cm > c2)) {
-      this._cursor = valueWidth;
-      this._render();
-      return true;
-    }
-    */
-
-    let mw = (rm - this._startRow) * screenWidth + cm - this._startCol;
-    this._cursor = mw;
-    if (this._cursor < 0) {
-      this._cursor = 0;
-    } else if (this._cursor > valueWidth) {
-      this._cursor = valueWidth;
-    }
+    let mw = dr * screenWidth + cm - this._valueStartCol();
+    this._cursor = Math.min(Math.max(mw, 0), valueWidth);
     this._render();
     return true;
   }
