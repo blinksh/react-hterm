@@ -114,7 +114,7 @@ export default class Prompt {
       case "enter":
         this._cursor = lib.wc.strWidth(this._value);
         this._render();
-        term.formFeed();
+        this._term.newLine();
         if (this._value && this._value.length > 0) {
           let op = "line";
           let data = { text: this._value };
@@ -266,6 +266,55 @@ export default class Prompt {
       this._startRow = this._term.getCursorRow();
     }
     keys(str, this._onKey);
+  }
+
+  processMouseClick(event: MouseEvent) {
+    if (this._startCol < 0) {
+      return false;
+    }
+
+    let rm = event.terminalRow;
+    let cm = event.terminalColumn;
+
+    if (rm == null || cm == null) {
+      return false;
+    }
+
+    let term = this._term;
+    let screen = this._term.screen_;
+    let screenWidth = screen.columnCount_;
+
+    let c1 = this._startCol;
+    let r1 = this._startRow;
+
+    let valueWidth = lib.wc.strWidth(this._value);
+    let end = valueWidth + this._startCol;
+    let r2 = (end / screenWidth) | (0 + this._startRow);
+    let c2 = end % screenWidth;
+
+    if (rm < r1 || (rm == r1 && cm < c1)) {
+      this._cursor = 0;
+      this._render();
+      return true;
+    }
+
+    /*
+    if (rm > r2 || (rm == r2 && cm > c2)) {
+      this._cursor = valueWidth;
+      this._render();
+      return true;
+    }
+    */
+
+    let mw = (rm - this._startRow) * screenWidth + cm - this._startCol;
+    this._cursor = mw;
+    if (this._cursor < 0) {
+      this._cursor = 0;
+    } else if (this._cursor > valueWidth) {
+      this._cursor = valueWidth;
+    }
+    this._render();
+    return true;
   }
 
   reset() {
