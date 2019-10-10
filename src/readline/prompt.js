@@ -3,6 +3,9 @@
 import keys, { type KeyType } from "./keys.js";
 import { lib } from "../hterm_all.js";
 
+const __forwardWordRegex = /^\W*\w+/;
+const __backwardWordRegex = /\w+\W*$/;
+
 export default class Prompt {
   _prompt: string;
   _term: any;
@@ -15,34 +18,29 @@ export default class Prompt {
   constructor(prompt: string, term: any) {
     this._prompt = prompt;
     this._term = term;
-    term.setAutoCarriageReturn(true);
-  }
-
-  _setCursorColWithOverflow(col: number) {
-    let screen = this._term.screen_;
-    let width = screen.columnCount_;
-    let r = (col / width) | 0;
-    let c = col % width;
-
-    screen.setCursorPosition(this._startRow + r, c);
-    console.log("setCursorPosition", this._startRow, this._startCol, r, c);
   }
 
   _onKey = (key: KeyType) => {
-    console.log(key);
-
     let term = this._term;
-    let col = term.getCursorColumn();
     switch (key.fullName) {
       case "tab":
         return;
       case "M-f":
       case "M-right":
-        this._forwardWord(col);
+        this._forwardWord();
         break;
       case "M-b":
       case "M-left":
-        this._backWord(col);
+        this._backWord();
+        break;
+      case "C-w":
+        this._deleteBackWord();
+        break;
+      case "M-d":
+        this._deleteForwardWord();
+        break;
+      case "M-u":
+        this._uppercaseForwardWord();
         break;
       case "home":
       case "C-a":
@@ -53,26 +51,29 @@ export default class Prompt {
         this._cursor = lib.wc.strWidth(this._value);
         break;
       case "C-k":
-        term.eraseToRight();
+        this._value = lib.wc.substring(this._value, 0, this._cursor);
+        this._cursor = lib.wc.strWidth(this._value);
         break;
       case "C-u":
-        let count = col - this._startCol;
-        if (count > 0) {
-          term.screen_.deleteChars(count);
-          this._setCursorColWithOverflow(this._startCol);
-        } else {
-          term.ringBell();
-        }
+        this._value = lib.wc.substr(this._value, this._cursor);
+        this._cursor = 0;
         break;
       case "C-l":
-        term.setCursorColumn(this._startCol);
-        term.eraseToRight();
+        if (this._cursor == 0 && this._value === "") {
+          term.ringBell();
+        } else {
+          this._cursor = 0;
+          this._value = "";
+        }
+        break;
+      case "C-c":
+        this._cursor = 0;
+        this._value = "";
         break;
       case "backspace":
         if (this._cursor == 0) {
           term.ringBell();
         } else {
-          //let width = lib.wc.strWidth(key.ch);
           let left = lib.wc.substring(this._value, 0, this._cursor - 1);
           let right = lib.wc.substr(this._value, this._cursor);
           this._value = [left, right].join("");
@@ -84,7 +85,6 @@ export default class Prompt {
           let left = lib.wc.substring(this._value, 0, this._cursor);
           let right = lib.wc.substr(this._value, this._cursor + 1);
           this._value = [left, right].join("");
-          //this._cursor = lib.wc.strWidth(left);
         }
         break;
       case "C-b":
@@ -169,19 +169,17 @@ export default class Prompt {
     }
   }
 
-  _forwardWord(col: number) {
-    let term = this._term;
+  _forwardWord() {
     let right = lib.wc.substr(this._value, this._cursor);
-    let match = /^\W*\w+/.exec(right);
+    let match = __forwardWordRegex.exec(right);
     if (match) {
       this._cursor += lib.wc.strWidth(match[0]);
     }
   }
 
-  _backWord(col: number) {
-    let term = this._term;
+  _backWord() {
     let left = lib.wc.substring(this._value, 0, this._cursor);
-    let match = /\w+\W*$/.exec(left);
+    let match = __backwardWordRegex.exec(left);
     if (match) {
       this._cursor -= lib.wc.strWidth(match[0]);
       if (this._cursor < 0) {
@@ -190,8 +188,49 @@ export default class Prompt {
     }
   }
 
-  _lineText(): string {
-    this._value;
+  _deleteBackWord() {
+    if (this._cursor == 0) {
+      this._term.ringBell();
+    }
+
+    var left = lib.wc.substring(this._value, 0, this._cursor);
+    let right = lib.wc.substr(this._value, this._cursor);
+    let match = __backwardWordRegex.exec(left);
+    if (match) {
+      let width = lib.wc.strWidth(match[0]);
+      left = lib.wc.substring(this._value, 0, this._cursor - width);
+      this._value = [left, right].join("");
+      this._cursor -= width;
+      if (this._cursor < 0) {
+        this._cursor = 0;
+      }
+    }
+  }
+
+  _deleteForwardWord() {
+    let left = lib.wc.substring(this._value, 0, this._cursor);
+    var right = lib.wc.substr(this._value, this._cursor);
+
+    let match = __forwardWordRegex.exec(right);
+    if (match) {
+      let width = lib.wc.strWidth(match[0]);
+      right = lib.wc.substr(right, width);
+      this._value = [left, right].join("");
+    }
+  }
+
+  _uppercaseForwardWord() {
+    let left = lib.wc.substring(this._value, 0, this._cursor);
+    var right = lib.wc.substr(this._value, this._cursor);
+
+    let match = __forwardWordRegex.exec(right);
+    if (match) {
+      let upperWord = match[0].toUpperCase();
+      let width = lib.wc.strWidth(upperWord);
+      right = lib.wc.substr(right, width);
+      this._value = [left, upperWord, right].join("");
+      this._cursor += width;
+    }
   }
 
   _render() {
