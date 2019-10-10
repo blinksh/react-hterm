@@ -93,19 +93,11 @@ export default class Prompt {
         break;
       case "C-b":
       case "left":
-        this._cursor -= 1;
-        if (this._cursor < 0) {
-          this._cursor = 0;
-          term.ringBell();
-        }
+        this._moveLeft();
         break;
       case "C-f":
       case "right":
-        if (lib.wc.strWidth(this._value) > this._cursor) {
-          this._cursor += 1;
-        } else {
-          term.ringBell();
-        }
+        this._moveRight();
         break;
       case "C-p":
       case "up":
@@ -138,6 +130,42 @@ export default class Prompt {
 
     this._render();
   };
+
+  _moveLeft() {
+    if (this._cursor < 0) {
+      this._cursor = 0;
+      this._term.ringBell();
+      return;
+    }
+
+    var w = 0;
+    var left;
+    var width;
+
+    do {
+      w += 1;
+      left = lib.wc.substring(this._value, 0, this._cursor - w);
+      width = lib.wc.strWidth(left);
+    } while (width >= this._cursor && w < 5);
+    this._cursor = width;
+  }
+
+  _moveRight() {
+    let valueWidth = lib.wc.strWidth(this._value);
+    if (this._cursor >= valueWidth) {
+      this._cursor = valueWidth;
+      this._term.ringBell();
+      return;
+    }
+    var w = 0;
+    var right, width;
+    do {
+      w += 1;
+      right = lib.wc.substring(this._value, 0, this._cursor + w);
+      width = lib.wc.strWidth(right);
+    } while (width <= this._cursor && w < 5);
+    this._cursor = width;
+  }
 
   _moveUp() {
     let term = this._term;
@@ -287,14 +315,11 @@ export default class Prompt {
       return false;
     }
 
-    let rm = event.terminalRow;
-    let cm = event.terminalColumn;
-
-    if (rm == null || cm == null) {
+    if (event.terminalRow == null || event.terminalColumn == null) {
       return false;
     }
 
-    let dr = rm - this._startRow;
+    let dr = event.terminalRow - this._startRow;
     if (dr < 0) {
       this._cursor = 0;
       this._render();
@@ -304,8 +329,11 @@ export default class Prompt {
     let valueWidth = lib.wc.strWidth(this._value);
     let screenWidth = this._term.screen_.columnCount_;
 
-    let mw = dr * screenWidth + cm - this._valueStartCol();
-    this._cursor = Math.min(Math.max(mw, 0), valueWidth);
+    let pos = dr * screenWidth + event.terminalColumn - this._valueStartCol();
+    this._cursor = Math.min(Math.max(pos, 0), valueWidth);
+    // fix cursor if we clik on emoji
+    let left = lib.wc.substring(this._value, 0, this._cursor);
+    this._cursor = lib.wc.strWidth(left);
     this._render();
     return true;
   }

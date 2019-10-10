@@ -112,7 +112,14 @@ class KeystrokeVisualizer {
   _onKey = key => {
     if (!this.currentChunk) {
       this.currentChunk = document.createElement("li");
-      this.container.appendChild(this.currentChunk);
+      if (this.options.position.indexOf("top") === 0) {
+        this.container.insertBefore(
+          this.currentChunk,
+          this.container.childNodes[0]
+        );
+      } else {
+        this.container.appendChild(this.currentChunk);
+      }
     }
 
     var modifier = "";
