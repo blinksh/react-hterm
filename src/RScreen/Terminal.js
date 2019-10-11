@@ -1,27 +1,28 @@
 // @flow
 
-import type { RRowType } from './model';
+import type { RRowType } from "./model";
 
-import { hterm, lib } from '../hterm_all.js';
-import { touch, rowWidth, rowText, genKey } from './utils';
-import { createDefaultNode } from './TextAttributes';
+import { hterm, lib } from "../hterm_all.js";
+import { touch, rowWidth, rowText, genKey } from "./utils";
+import { createDefaultNode } from "./TextAttributes";
+import Prompt from "../readline/prompt";
 
 hterm.Terminal.prototype.decorate = function(div) {
   this.div_ = document.body;
 
   this.accessibilityReader_ = new hterm.AccessibilityReader(div);
   this.scrollPort_.decorate(div);
-  this.scrollPort_.setUserCssUrl(this.prefs_.get('user-css'));
-  this.scrollPort_.setUserCssText(this.prefs_.get('user-css-text'));
+  this.scrollPort_.setUserCssUrl(this.prefs_.get("user-css"));
+  this.scrollPort_.setUserCssText(this.prefs_.get("user-css-text"));
 
   this.div_.focus = this.focus.bind(this);
 
-  this.setFontSize(this.prefs_.get('font-size'));
+  this.setFontSize(this.prefs_.get("font-size"));
   this.syncFontFamily();
 
-  this.setScrollbarVisible(this.prefs_.get('scrollbar-visible'));
+  this.setScrollbarVisible(this.prefs_.get("scrollbar-visible"));
   this.setScrollWheelMoveMultipler(
-    this.prefs_.get('scroll-wheel-move-multiplier'),
+    this.prefs_.get("scroll-wheel-move-multiplier")
   );
 
   this.document_ = this.scrollPort_.getDocument();
@@ -32,107 +33,107 @@ hterm.Terminal.prototype.decorate = function(div) {
 
   var onMouse = this.onMouse_.bind(this);
   var screenNode = this.scrollPort_.getScreenNode();
-  screenNode.addEventListener('mousedown', onMouse);
-  screenNode.addEventListener('mouseup', onMouse);
-  screenNode.addEventListener('mousemove', onMouse);
+  screenNode.addEventListener("mousedown", onMouse);
+  screenNode.addEventListener("mouseup", onMouse);
+  screenNode.addEventListener("mousemove", onMouse);
   this.scrollPort_.onScrollWheel = onMouse;
 
-  screenNode.addEventListener('focus', this.onFocusChange_.bind(this, true));
+  screenNode.addEventListener("focus", this.onFocusChange_.bind(this, true));
   // Listen for mousedown events on the screenNode as in FF the focus
   // events don't bubble.
   screenNode.addEventListener(
-    'mousedown',
+    "mousedown",
     function() {
       setTimeout(this.onFocusChange_.bind(this, true));
-    }.bind(this),
+    }.bind(this)
   );
 
-  screenNode.addEventListener('blur', this.onFocusChange_.bind(this, false));
+  screenNode.addEventListener("blur", this.onFocusChange_.bind(this, false));
 
-  var style = this.document_.createElement('style');
+  var style = this.document_.createElement("style");
   style.textContent =
     '.cursor-node[focus="false"] {' +
-    '  box-sizing: border-box;' +
-    '  background-color: transparent !important;' +
-    '  border-width: 2px;' +
-    '  border-style: solid;' +
-    '}' +
-    '.wc-node {' +
-    '  display: inline-block;' +
-    '  text-align: center;' +
-    '  width: calc(var(--hterm-charsize-width) * 2);' +
-    '  line-height: var(--hterm-charsize-height);' +
-    '}' +
-    ':root {' +
-    '  --hterm-charsize-width: ' +
+    "  box-sizing: border-box;" +
+    "  background-color: transparent !important;" +
+    "  border-width: 2px;" +
+    "  border-style: solid;" +
+    "}" +
+    ".wc-node {" +
+    "  display: inline-block;" +
+    "  text-align: center;" +
+    "  width: calc(var(--hterm-charsize-width) * 2);" +
+    "  line-height: var(--hterm-charsize-height);" +
+    "}" +
+    ":root {" +
+    "  --hterm-charsize-width: " +
     this.scrollPort_.characterSize.width +
-    'px;' +
-    '  --hterm-charsize-height: ' +
+    "px;" +
+    "  --hterm-charsize-height: " +
     this.scrollPort_.characterSize.height +
-    'px;' +
+    "px;" +
     // Default position hides the cursor for when the window is initializing.
-    '  --hterm-cursor-offset-col: -1;' +
-    '  --hterm-cursor-offset-row: -1;' +
-    '  --hterm-blink-node-duration: 0.7s;' +
-    '  --hterm-mouse-cursor-text: text;' +
-    '  --hterm-mouse-cursor-pointer: default;' +
-    '  --hterm-mouse-cursor-style: var(--hterm-mouse-cursor-text);' +
-    '}' +
-    '.uri-node:hover {' +
-    '  text-decoration: underline;' +
-    '  cursor: pointer;' +
-    '}' +
-    '@keyframes blink {' +
-    '  from { opacity: 1.0; }' +
-    '  to { opacity: 0.0; }' +
-    '}' +
-    '.blink-node {' +
-    '  animation-name: blink;' +
-    '  animation-duration: var(--hterm-blink-node-duration);' +
-    '  animation-iteration-count: infinite;' +
-    '  animation-timing-function: ease-in-out;' +
-    '  animation-direction: alternate;' +
-    '}';
+    "  --hterm-cursor-offset-col: -1;" +
+    "  --hterm-cursor-offset-row: -1;" +
+    "  --hterm-blink-node-duration: 0.7s;" +
+    "  --hterm-mouse-cursor-text: text;" +
+    "  --hterm-mouse-cursor-pointer: default;" +
+    "  --hterm-mouse-cursor-style: var(--hterm-mouse-cursor-text);" +
+    "}" +
+    ".uri-node:hover {" +
+    "  text-decoration: underline;" +
+    "  cursor: pointer;" +
+    "}" +
+    "@keyframes blink {" +
+    "  from { opacity: 1.0; }" +
+    "  to { opacity: 0.0; }" +
+    "}" +
+    ".blink-node {" +
+    "  animation-name: blink;" +
+    "  animation-duration: var(--hterm-blink-node-duration);" +
+    "  animation-iteration-count: infinite;" +
+    "  animation-timing-function: ease-in-out;" +
+    "  animation-direction: alternate;" +
+    "}";
   this.document_.head.appendChild(style);
 
-  this.cursorOverlayNode_ = this.document_.createElement('div');
-  this.cursorOverlayNode_.id = 'hterm:terminal-overlay-cursor';
+  this.cursorOverlayNode_ = this.document_.createElement("div");
+  this.cursorOverlayNode_.id = "hterm:terminal-overlay-cursor";
   this.cursorOverlayNode_.style.cssText =
-    'position: absolute;' +
-    'left: 0;' +
-    'top: 0;' +
-    'bottom: 0;' +
-    'right: 0;' +
-    'pointer-events: none;';
+    "position: absolute;" +
+    "left: 0;" +
+    "top: 0;" +
+    "bottom: 0;" +
+    "right: 0;" +
+    "pointer-events: none;";
 
   this.document_.body.appendChild(this.cursorOverlayNode_);
 
-  this.cursorNode_ = this.document_.createElement('div');
-  this.cursorNode_.id = 'hterm:terminal-cursor';
-  this.cursorNode_.className = 'cursor-node';
+  this.cursorNode_ = this.document_.createElement("div");
+  this.cursorNode_.id = "hterm:terminal-cursor";
+  this.cursorNode_.className = "cursor-node";
   this.cursorNode_.style.cssText =
-    'position: absolute;' +
+    "position: absolute;" +
     //'left: calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col));' +
     //'top: calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row));' +
-    'display: ' +
-    (this.options_.cursorVisible ? '' : 'none') +
-    ';' +
-    'width: var(--hterm-charsize-width);' +
-    'height: var(--hterm-charsize-height);' +
-    'background-color: var(--hterm-cursor-color);' +
-    'border-color: var(--hterm-cursor-color);' +
-    '  isolatation: isolate;' +
-    '  transform: translate3d(calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col)), calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row)), 0);' +
-    '-webkit-transition: opacity, background-color 100ms linear;' +
-    '-moz-transition: opacity, background-color 100ms linear;';
+    "display: " +
+    (this.options_.cursorVisible ? "" : "none") +
+    ";" +
+    "width: var(--hterm-charsize-width);" +
+    "height: var(--hterm-charsize-height);" +
+    "background-color: var(--hterm-cursor-color);" +
+    "border-color: var(--hterm-cursor-color);" +
+    "  isolatation: isolate;" +
+    "  transform: translate3d(calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col)), calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row)), 0);" +
+    "-webkit-transition: opacity, background-color 100ms linear;" +
+    "-moz-transition: opacity, background-color 100ms linear;";
 
   this.setCursorColor();
-  this.setCursorBlink(!!this.prefs_.get('cursor-blink'));
+  this.setCursorBlink(!!this.prefs_.get("cursor-blink"));
   this.restyleCursor_();
 
   this.cursorOverlayNode_.appendChild(this.cursorNode_);
 
-  this.ime_ = this.document_.createElement('ime');
+  this.ime_ = this.document_.createElement("ime");
   this.cursorOverlayNode_.appendChild(this.ime_);
 
   // When 'enableMouseDragScroll' is off we reposition this element directly
@@ -142,36 +143,37 @@ hterm.Terminal.prototype.decorate = function(div) {
   // events do not cause the scrollport to scroll.
   //
   // It's a hack, but it's the cleanest way I could find.
-  this.scrollBlockerNode_ = this.document_.createElement('div');
-  this.scrollBlockerNode_.id = 'hterm:mouse-drag-scroll-blocker';
+  this.scrollBlockerNode_ = this.document_.createElement("div");
+  this.scrollBlockerNode_.id = "hterm:mouse-drag-scroll-blocker";
   this.scrollBlockerNode_.style.cssText =
-    'position: absolute;' +
-    'top: -99px;' +
-    'display: block;' +
-    'width: 10px;' +
-    'height: 10px;';
+    "position: absolute;" +
+    "top: -99px;" +
+    "display: block;" +
+    "width: 10px;" +
+    "height: 10px;";
   this.document_.body.appendChild(this.scrollBlockerNode_);
 
   this.scrollPort_.onScrollWheel = onMouse;
-  ['mousedown', 'mouseup', 'mousemove', 'click', 'dblclick'].forEach(
+  ["mousedown", "mouseup", "mousemove", "click", "dblclick"].forEach(
     function(event) {
       this.scrollBlockerNode_.addEventListener(event, onMouse);
       this.cursorNode_.addEventListener(event, onMouse);
       this.document_.addEventListener(event, onMouse);
-    }.bind(this),
+    }.bind(this)
   );
 
   this.cursorNode_.addEventListener(
-    'mousedown',
+    "mousedown",
     function() {
       setTimeout(this.focus.bind(this));
-    }.bind(this),
+    }.bind(this)
   );
 
   this.setReverseVideo(false);
 
   this.scrollPort_.focus();
   this.scrollPort_.scheduleRedraw();
+  this.prompt = new Prompt(this);
 };
 
 hterm.Terminal.prototype.syncCursorPosition_ = function() {
@@ -187,14 +189,14 @@ hterm.Terminal.prototype.syncCursorPosition_ = function() {
     return;
   }
 
-  if (this.options_.cursorVisible && this.cursorNode_.style.display == 'none') {
+  if (this.options_.cursorVisible && this.cursorNode_.style.display == "none") {
     // Re-display the terminal cursor if it was hidden by the mouse cursor.
-    this.cursorNode_.style.display = '';
+    this.cursorNode_.style.display = "";
   }
 
   this.setCssCursorPos({
     row: cursorRowIndex - topRowIndex + this.scrollPort_.visibleRowTopMargin,
-    col: this.screen_.cursorPosition.column,
+    col: this.screen_.cursorPosition.column
   });
 
   // Update the caret for a11y purposes.
@@ -207,7 +209,7 @@ var __prevCursorPos = { row: -1, col: -1 };
 
 hterm.Terminal.prototype.setCssCursorPos = function(pos: {
   row: number,
-  col: number,
+  col: number
 }) {
   if (__prevCursorPos.row === pos.row && __prevCursorPos.col === pos.col) {
     return;
@@ -218,11 +220,11 @@ hterm.Terminal.prototype.setCssCursorPos = function(pos: {
   }
 
   if (__prevCursorPos.row !== pos.row) {
-    this.setCursorCssVar('cursor-offset-row', pos.row + '');
+    this.setCursorCssVar("cursor-offset-row", pos.row + "");
   }
 
   if (__prevCursorPos.col !== pos.col) {
-    this.setCursorCssVar('cursor-offset-col', pos.col + '');
+    this.setCursorCssVar("cursor-offset-col", pos.col + "");
   }
   __prevCursorPos = pos;
 };
@@ -230,7 +232,7 @@ hterm.Terminal.prototype.setCssCursorPos = function(pos: {
 hterm.Terminal.prototype.setCursorCssVar = function(
   name,
   value,
-  opt_prefix = '--hterm-',
+  opt_prefix = "--hterm-"
 ) {
   this.cursorOverlayNode_.style.setProperty(`${opt_prefix}${name}`, value);
 };
@@ -300,7 +302,7 @@ hterm.Terminal.prototype.appendRows_ = function(count) {
       n: offset + i,
       o: false,
       v: 0,
-      nodes: [createDefaultNode('', 0)],
+      nodes: [createDefaultNode("", 0)]
     };
     this.screen_.setRow(row, cursorRow + i);
   }
@@ -530,8 +532,8 @@ function debugPrint(screen: hterm.Screen, str: string) {
   var attrs = screen.textAttributes;
   console.log(
     `print([${loc[0]}, ${loc[1]}], ${JSON.stringify(str)}, ${JSON.stringify(
-      attrs.attrs(),
-    )})`,
+      attrs.attrs()
+    )})`
   );
 }
 
@@ -604,30 +606,31 @@ hterm.Terminal.prototype.print = function(str) {
 };
 
 hterm.Terminal.prototype.interpret = function(str) {
+  this.prompt.reset();
   this.vt.interpret(str);
   // this.scheduleSyncCursorPosition_();
 };
 
 hterm.Terminal.prototype.setFontSize = function(px) {
-  if (px <= 0) px = this.prefs_.get('font-size');
+  if (px <= 0) px = this.prefs_.get("font-size");
 
   if (this.cursorOverlayNode_) {
-    this.cursorOverlayNode_.style.fontSize = px + 'px';
+    this.cursorOverlayNode_.style.fontSize = px + "px";
   }
   this.scrollPort_.setFontSize(px);
-  this.setCssVar('charsize-width', this.scrollPort_.characterSize.width + 'px');
+  this.setCssVar("charsize-width", this.scrollPort_.characterSize.width + "px");
   this.setCssVar(
-    'charsize-height',
-    this.scrollPort_.characterSize.height + 'px',
+    "charsize-height",
+    this.scrollPort_.characterSize.height + "px"
   );
 };
 
 hterm.Terminal.prototype.syncFontFamily = function() {
-  const fontFamily = this.prefs_.get('font-family');
+  const fontFamily = this.prefs_.get("font-family");
   if (this.cursorOverlayNode_) {
     this.cursorOverlayNode_.style.fontFamily = fontFamily;
   }
-  this.scrollPort_.setFontFamily(fontFamily, this.prefs_.get('font-smoothing'));
+  this.scrollPort_.setFontFamily(fontFamily, this.prefs_.get("font-smoothing"));
   this.syncBoldSafeState();
 };
 
@@ -636,21 +639,21 @@ hterm.Terminal.prototype.displayImage = function(options) {
   if (options.uri === undefined) return;
 
   // Set up the defaults to simplify code below.
-  if (!options.name) options.name = '';
+  if (!options.name) options.name = "";
 
   // See if we should show this object directly, or download it.
   if (options.inline) {
     const io = this.io.push();
     io.showOverlay(
-      hterm.msg('LOADING_RESOURCE_START', [options.name], 'Loading $1 ...'),
-      null,
+      hterm.msg("LOADING_RESOURCE_START", [options.name], "Loading $1 ..."),
+      null
     );
 
     // While we're loading the image, eat all the user's input.
     io.onVTKeystroke = io.sendString = () => {};
 
     // Initialize this new image.
-    const img = this.document_.createElement('img');
+    const img = this.document_.createElement("img");
     img.src = options.uri;
     img.title = img.alt = options.name;
 
@@ -664,32 +667,32 @@ hterm.Terminal.prototype.displayImage = function(options) {
     img.onload = () => {
       // Parse a width/height specification.
       const parseDim = (dim, maxDim, cssVar) => {
-        if (!dim || dim == 'auto') return '';
+        if (!dim || dim == "auto") return "";
 
         const ary = dim.match(/^([0-9]+)(px|%)?$/);
         if (ary) {
-          if (ary[2] == '%') return (maxDim * parseInt(ary[1])) / 100 + 'px';
-          else if (ary[2] == 'px') return dim;
+          if (ary[2] == "%") return (maxDim * parseInt(ary[1])) / 100 + "px";
+          else if (ary[2] == "px") return dim;
           else return `calc(${dim} * var(${cssVar}))`;
         }
 
-        return '';
+        return "";
       };
       img.style.width = parseDim(
         options.width,
         this.document_.body.clientWidth,
-        '--hterm-charsize-width',
+        "--hterm-charsize-width"
       );
       img.style.height = parseDim(
         options.height,
         this.document_.body.clientHeight,
-        '--hterm-charsize-height',
+        "--hterm-charsize-height"
       );
 
       // Figure out how many rows the image occupies, then add that many.
       // XXX: This count will be inaccurate if the font size changes on us.
       const padRows = Math.ceil(
-        img.clientHeight / this.scrollPort_.characterSize.height,
+        img.clientHeight / this.scrollPort_.characterSize.height
       );
       for (let i = 0; i < padRows; ++i) this.newLine();
 
@@ -702,19 +705,19 @@ hterm.Terminal.prototype.displayImage = function(options) {
       // Create a wrapper node so we can do an absolute in a relative position.
       // This helps with rounding errors between JS & CSS counts.
       const row: RRowType = this.getRowNode(
-        this.scrollbackRows_.length + this.getCursorRow() - 1,
+        this.scrollbackRows_.length + this.getCursorRow() - 1
       );
       row.img = {
         textAlign: options.align,
         padRows: padRows,
-        objectFit: options.preserveAspectRatio ? 'scale-down' : 'fill',
+        objectFit: options.preserveAspectRatio ? "scale-down" : "fill",
         src: img.src,
         title: img.title,
         alt: img.alt,
         style: {
-          positon: 'absolute',
-          bottom: 'calc(0px - var(--hterm-charsize-height))',
-        },
+          positon: "absolute",
+          bottom: "calc(0px - var(--hterm-charsize-height))"
+        }
       };
       touch(row);
       this.scrollPort_.renderRef.touchRow(row);
@@ -728,10 +731,10 @@ hterm.Terminal.prototype.displayImage = function(options) {
       this.document_.body.removeChild(img);
       io.showOverlay(
         hterm.msg(
-          'LOADING_RESOURCE_FAILED',
+          "LOADING_RESOURCE_FAILED",
           [options.name],
-          'Loading $1 failed ...',
-        ),
+          "Loading $1 failed ..."
+        )
       );
       io.pop();
     };
@@ -744,9 +747,9 @@ hterm.Terminal.prototype.getRowsText = function(start, end) {
     var node = this.getRowNode(i);
     ary.push(rowText(node));
     if (i < end - 1 && !node.o) {
-      ary.push('\n');
+      ary.push("\n");
     }
   }
 
-  return ary.join('');
+  return ary.join("");
 };

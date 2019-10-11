@@ -15,8 +15,8 @@ export default class Prompt {
   _startCol = 0;
   _startRow = 0;
 
-  constructor(prompt: string, term: any) {
-    this._prompt = prompt;
+  constructor(term: any) {
+    this._prompt = "";
     this._term = term;
   }
 
@@ -107,15 +107,16 @@ export default class Prompt {
       case "down":
         this._moveDown();
         break;
+      case "return":
       case "enter":
         this._cursor = lib.wc.strWidth(this._value);
         this._render();
-        this._term.newLine();
+        this._term.interpret("\r\n");
         if (this._value && this._value.length > 0) {
           let op = "line";
           let data = { text: this._value };
           window.webkit.messageHandlers.interOp.postMessage({ op, data });
-          this._startCol = -1;
+          //  this.reset();
         }
         return;
       default:
@@ -338,7 +339,19 @@ export default class Prompt {
     return true;
   }
 
+  promptB64(b64: string) {
+    this.reset();
+    this._term.setAutoCarriageReturn(true);
+    this._prompt = "blink> ";
+    this._value = "";
+    this._cursor = 0;
+    this._startCol = this._term.getCursorColumn();
+    this._startRow = this._term.getCursorRow();
+    this._render();
+  }
+
   reset() {
+    this._prompt = "";
     this._startCol = -1;
   }
 

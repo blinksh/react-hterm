@@ -1,7 +1,6 @@
 // @flow
 
 import { hterm, lib } from "./hterm_all";
-import Prompt from "./readline/prompt";
 import KeystrokeVisualizer from "./readline/visualizer";
 
 require("./index.css");
@@ -12,7 +11,6 @@ require("./RScreen/Terminal");
 
 window.hterm = hterm;
 window.lib = lib;
-window.TermPrompt = Prompt;
 window.KeystrokeVisualizer = KeystrokeVisualizer;
 
 /*
