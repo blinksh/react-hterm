@@ -527,6 +527,24 @@ hterm.VT.CC1["\x1b"] = function(parseState) {
   parseState.func = __parseESC;
 };
 
+hterm.VT.OSC["52"] = function(parseState) {
+  if (!this.enableClipboardWrite) return;
+
+  // Args come in as a single 'clipboard;b64-data' string.  The clipboard
+  // parameter is used to select which of the X clipboards to address.  Since
+  // we're not integrating with X, we treat them all the same.
+  var args = parseState.args[0].match(/^[cps01234567]*;(.*)/);
+  if (!args) return;
+
+  let data;
+  try {
+    data = window.atob(args[1]);
+  } catch (e) {
+    return;
+  }
+  if (data) this.terminal.copyStringToClipboard(this.decode(data));
+};
+
 hterm.VT.OSC["1337"] = function(parseState) {
   // Blink extension
   if (parseState.args[0] === "BlinkAutoCR=1") {

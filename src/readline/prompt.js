@@ -124,6 +124,7 @@ export default class Prompt {
           let width = lib.wc.strWidth(key.ch);
           let left = lib.wc.substring(this._value, 0, this._cursor);
           let right = lib.wc.substr(this._value, this._cursor);
+          term.accessibilityReader_.assertiveAnnounce(key.ch);
           this._value = [left, key.ch, right].join("");
           this._cursor += width;
         }
@@ -290,8 +291,8 @@ export default class Prompt {
       term.setCursorPosition(this._startRow, this._startCol);
     }
 
-    term.print(this._prompt);
-    term.print(this._value);
+    term.print(this._prompt, false);
+    term.print(this._value, false);
 
     pos = this._cursor + this._valueStartCol();
     r = (pos / screenWidth) | 0;
@@ -348,6 +349,7 @@ export default class Prompt {
     this._startCol = this._term.getCursorColumn();
     this._startRow = this._term.getCursorRow();
     this._render();
+    this._term.accessibilityReader_.announce(this._prompt);
   }
 
   reset() {

@@ -5,15 +5,17 @@ import type { RRowType } from "./model";
 import { hterm, lib } from "../hterm_all.js";
 import { touch, rowWidth, rowText, genKey } from "./utils";
 import { createDefaultNode } from "./TextAttributes";
+import _ from "./AccessibilityReader";
 import Prompt from "../readline/prompt";
 
 hterm.Terminal.prototype.decorate = function(div) {
   this.div_ = document.body;
 
-  this.accessibilityReader_ = new hterm.AccessibilityReader(div);
+  this.accessibilityReader_ = new hterm.AccessibilityReader(this.div_);
   this.scrollPort_.decorate(div);
   this.scrollPort_.setUserCssUrl(this.prefs_.get("user-css"));
   this.scrollPort_.setUserCssText(this.prefs_.get("user-css-text"));
+  this.scrollPort_.setAccessibilityReader(this.accessibilityReader_);
 
   this.div_.focus = this.focus.bind(this);
 
@@ -182,6 +184,26 @@ hterm.Terminal.prototype.syncCursorPosition_ = function() {
   var cursorRowIndex =
     this.scrollbackRows_.length + this.screen_.cursorPosition.row;
 
+  let forceSyncSelection = false;
+  if (this.accessibilityReader_.accessibilityEnabled) {
+    // Report the new position of the cursor for accessibility purposes.
+    const cursorColumnIndex = this.screen_.cursorPosition.column;
+    var node = this.getRowNode(this.screen_.cursorPosition.row);
+    const cursorLineText = rowText(node);
+    // This will force the selection to be sync'd to the cursor position if the
+    // user has pressed a key. Generally we would only sync the cursor position
+    // when selection is collapsed so that if the user has selected something
+    // we don't clear the selection by moving the selection. However when a
+    // screen reader is used, it's intuitive for entering a key to move the
+    // selection to the cursor.
+    forceSyncSelection = this.accessibilityReader_.hasUserGesture;
+    this.accessibilityReader_.afterCursorChange(
+      cursorLineText,
+      cursorRowIndex,
+      cursorColumnIndex
+    );
+  }
+
   if (cursorRowIndex > bottomRowIndex) {
     // Cursor is scrolled off screen, move it outside of the visible area.
     //this.setCssCursorPos({ row: -1, col: this.screen_.cursorPosition.column });
@@ -201,7 +223,7 @@ hterm.Terminal.prototype.syncCursorPosition_ = function() {
 
   // Update the caret for a11y purposes.
   var selection = this.document_.getSelection();
-  if (selection && selection.isCollapsed)
+  if (selection && (selection.isCollapsed || forceSyncSelection))
     this.screen_.syncSelectionCaret(selection);
 };
 
@@ -537,7 +559,11 @@ function debugPrint(screen: hterm.Screen, str: string) {
   );
 }
 
-hterm.Terminal.prototype.print = function(str) {
+hterm.Terminal.prototype.print = function(str, announce = true) {
+  this.scheduleSyncCursorPosition_();
+  if (announce) {
+    this.accessibilityReader_.announce(str);
+  }
   var startOffset = 0;
 
   var strWidth = lib.wc.strWidth(str);
