@@ -8,6 +8,8 @@ const __backwardWordRegex = /\w+\W*$/;
 
 export default class Prompt {
   _prompt: string;
+  _shell: boolean;
+  _secure: boolean;
   _term: any;
   _cursor: number = 0;
   _row: number = 0;
@@ -106,6 +108,8 @@ export default class Prompt {
       case "C-n":
       case "down":
         this._moveDown();
+        break;
+      case "escape":
         break;
       case "return":
       case "enter":
@@ -279,6 +283,9 @@ export default class Prompt {
     term.eraseBelow();
 
     let valueWidth = lib.wc.strWidth(this._value);
+    if (this._secure) {
+      valueWidth = 0;
+    }
 
     let pos = valueWidth + this._valueStartCol();
     let r = (pos / screenWidth) | 0;
@@ -292,9 +299,11 @@ export default class Prompt {
     }
 
     term.print(this._prompt, false);
-    term.print(this._value, false);
+    if (!this._secure) {
+      term.print(this._value, false);
+    }
 
-    pos = this._cursor + this._valueStartCol();
+    pos = (this._secure ? 0 : this._cursor) + this._valueStartCol();
     r = (pos / screenWidth) | 0;
     c = pos % screenWidth;
 
@@ -343,7 +352,11 @@ export default class Prompt {
   promptB64(b64: string) {
     this.reset();
     this._term.setAutoCarriageReturn(true);
-    this._prompt = "blink> ";
+
+    let opts = JSON.parse(window.atob(b64));
+    this._prompt = opts.prompt;
+    this._secure = opts.secure;
+    this._shell = opts.shell;
     this._value = "";
     this._cursor = 0;
     this._startCol = this._term.getCursorColumn();
@@ -355,6 +368,8 @@ export default class Prompt {
   reset() {
     this._prompt = "";
     this._startCol = -1;
+    this._secure = false;
+    this._shell = false;
   }
 
   resize() {
