@@ -272,6 +272,44 @@ class History {
   }
 }
 
+class Complete {
+  _prompt: Prompt;
+  _cursor: number = -1;
+  _lastValue: string = "";
+  _call: ?any = null;
+
+  constructor(prompt: Prompt) {
+    this._prompt = prompt;
+    this._lastValue = prompt._value;
+  }
+
+  complete() {
+    this._cancelCall();
+    this._call = window.term_apiRequest("completion.for", {
+      input: this._prompt._value
+    });
+    this._call.then(response => {
+      if (!response) {
+        return;
+      }
+
+      let line = response.result[0];
+      if (line) {
+        this._prompt._value = line;
+        this._prompt._cursor = lib.wc.strWidth(line);
+      }
+      this._prompt._render();
+    });
+  }
+
+  _cancelCall() {
+    if (this._call) {
+      this._call.cancel();
+    }
+    this._call = null;
+  }
+}
+
 export default class Prompt {
   _prompt: string = "";
   _shell: boolean = false;
@@ -281,6 +319,7 @@ export default class Prompt {
   _row: number = 0;
   _value: string = "";
   _history: ?History = null;
+  _complete: ?Complete = null;
   _startCol = 0;
   _startRow = 0;
   _historySearchMode = false;
@@ -297,6 +336,7 @@ export default class Prompt {
     let term = this._term;
     switch (key.fullName) {
       case "tab":
+        this._completeIfNeeded();
         return;
       case "M-f":
       case "M-right":
@@ -429,6 +469,12 @@ export default class Prompt {
     }
   }
 
+  _completeIfNeeded() {
+    if (this._shell && !this._historySearchMode) {
+      this._getComplete().complete();
+    }
+  }
+
   _moveLeft() {
     if (this._cursor < 0) {
       this._cursor = 0;
@@ -511,6 +557,14 @@ export default class Prompt {
     }
 
     return this._history;
+  }
+
+  _getComplete() {
+    if (!this._complete) {
+      this._complete = new Complete(this);
+    }
+
+    return this._complete;
   }
 
   _resetHistory() {
@@ -731,6 +785,7 @@ export default class Prompt {
       return;
     }
     this._history = null;
+    this._complete = null;
     this._prompt = "";
     this._startCol = -1;
     this._secure = false;
