@@ -23,6 +23,7 @@ class History {
   _lines: Array<LineType> = [];
   _total: number = 0;
   _found: number = 0;
+  _response: ?any = null;
 
   constructor(prompt: Prompt) {
     this._prompt = prompt;
@@ -44,6 +45,11 @@ class History {
 
   search() {
     this._cancelCall();
+
+    if (this._response && this._response.pattern == this._prompt._value) {
+      return;
+    }
+
     this._cursor = -1;
     this._call = window.term_apiRequest("history.search", {
       pattern: this._prompt._value,
@@ -55,6 +61,8 @@ class History {
       if (!response) {
         return;
       }
+
+      this._response = response;
 
       this._lines = response.lines;
       this._total = response.total;
@@ -277,6 +285,7 @@ class Complete {
   _cursor: number = -1;
   _lastValue: string = "";
   _call: ?any = null;
+  _response: ?any = null;
 
   constructor(prompt: Prompt) {
     this._prompt = prompt;
@@ -288,6 +297,7 @@ class Complete {
     this._call = window.term_apiRequest("completion.for", {
       input: this._prompt._value
     });
+
     this._call.then(response => {
       if (!response) {
         return;
@@ -297,7 +307,32 @@ class Complete {
       if (line) {
         this._prompt._value = line;
         this._prompt._cursor = lib.wc.strWidth(line);
+        if (response.kind == "command") {
+          this._prompt._hint = response.hint;
+        } else {
+          this._prompt.hint = "";
+        }
       }
+      this._prompt._render();
+    });
+  }
+
+  hint() {
+    this._cancelCall();
+    if (this._response && this._response.input == this._prompt._value) {
+      return;
+    }
+    this._call = window.term_apiRequest("completion.for", {
+      input: this._prompt._value
+    });
+    this._call.then(response => {
+      if (!response) {
+        return;
+      }
+
+      this._response = response;
+
+      this._prompt._hint = response.hint;
       this._prompt._render();
     });
   }
@@ -323,6 +358,7 @@ export default class Prompt {
   _startCol = 0;
   _startRow = 0;
   _historySearchMode = false;
+  _hint: string = "";
 
   constructor(term: any) {
     this._term = term;
@@ -438,14 +474,12 @@ export default class Prompt {
           return;
         }
         this._cursor = lib.wc.strWidth(this._value);
+        this._hint = "";
         this._render();
         this._term.interpret("\r\n");
-        if (this._value && this._value.length > 0) {
-          let op = "line";
-          let data = { text: this._value };
-          window.webkit.messageHandlers.interOp.postMessage({ op, data });
-          //  this.reset();
-        }
+        let op = "line";
+        let data = { text: this._value || "" };
+        window.webkit.messageHandlers.interOp.postMessage({ op, data });
         return;
       default:
         if (key.ch) {
@@ -456,10 +490,11 @@ export default class Prompt {
           this._value = [left, key.ch, right].join("");
           this._cursor += width;
           this._resetHistory();
-          this._searchIfNeeded();
         }
     }
 
+    this._searchIfNeeded();
+    this._hintIfNeeded();
     this._render();
   };
 
@@ -472,6 +507,14 @@ export default class Prompt {
   _completeIfNeeded() {
     if (this._shell && !this._historySearchMode) {
       this._getComplete().complete();
+    }
+  }
+
+  _hintIfNeeded() {
+    if (this._shell && !this._historySearchMode) {
+      this._getComplete().hint();
+    } else {
+      this._hint = "";
     }
   }
 
@@ -523,6 +566,7 @@ export default class Prompt {
         this._cursor = 0;
       }
     } else if (this._shell) {
+      this._hint = "";
       return this._getHistory().prev(this._historySearchMode);
     } else {
       term.ringBell();
@@ -544,6 +588,7 @@ export default class Prompt {
         this._cursor = width;
       }
     } else if (this._shell) {
+      this._hint = "";
       return this._getHistory().next(this._historySearchMode);
     } else {
       term.ringBell();
@@ -660,9 +705,12 @@ export default class Prompt {
 
     term.eraseBelow();
 
+    let hintWidth = lib.wc.strWidth(this._hint);
     let valueWidth = lib.wc.strWidth(this._value);
+    valueWidth = Math.max(hintWidth, valueWidth);
     if (this._secure) {
       valueWidth = 0;
+      hintWidth = 0;
     }
 
     let pos = valueWidth + this._valueStartCol();
@@ -677,7 +725,16 @@ export default class Prompt {
     }
 
     term.print(this._prompt, false);
+    var cursor = term.saveCursor();
     if (!this._secure) {
+      if (this._hint && this._shell) {
+        term.screen_.textAttributes.faint = true;
+        term.screen_.textAttributes.foregroundSource = 3;
+        term.screen_.textAttributes.syncColors();
+        term.print(this._hint, false);
+        term.restoreCursor(cursor);
+        term.screen_.textAttributes.reset();
+      }
       term.print(this._value, false);
     }
 
@@ -773,6 +830,7 @@ export default class Prompt {
     this._secure = opts.secure;
     this._shell = opts.shell;
     this._value = "";
+    this._hint = "";
     this._cursor = 0;
     this._startCol = this._term.getCursorColumn();
     this._startRow = this._term.getCursorRow();
@@ -790,6 +848,7 @@ export default class Prompt {
     this._startCol = -1;
     this._secure = false;
     this._shell = false;
+    this._hint = "";
     this._historySearchMode = false;
   }
 
