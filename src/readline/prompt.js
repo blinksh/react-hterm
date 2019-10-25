@@ -486,15 +486,6 @@ export default class Prompt {
       case "C-e":
         this._cursor = lib.wc.strWidth(this._value);
         break;
-      case "C-k":
-        if (this._historySearchMode) {
-          this._moveUp();
-        } else {
-          this._value = lib.wc.substring(this._value, 0, this._cursor);
-          this._cursor = lib.wc.strWidth(this._value);
-          this._resetHistory();
-        }
-        break;
       case "C-u":
         this._value = lib.wc.substr(this._value, this._cursor);
         this._cursor = 0;
@@ -546,6 +537,13 @@ export default class Prompt {
       case "right":
         this._moveRight();
         break;
+      case "C-k":
+        if (!this._historySearchMode) {
+          this._value = lib.wc.substring(this._value, 0, this._cursor);
+          this._cursor = lib.wc.strWidth(this._value);
+          this._resetHistory();
+          break;
+        }
       case "C-p":
       case "up":
         return this._moveUp();
@@ -558,8 +556,7 @@ export default class Prompt {
       case "linefeed":
       case "C-j":
         if (this._historySearchMode) {
-          this._moveDown();
-          return;
+          return this._moveDown();
         }
       case "return":
       case "enter":
