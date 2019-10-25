@@ -286,16 +286,53 @@ class Complete {
   _lastValue: string = "";
   _call: ?any = null;
   _response: ?any = null;
+  _n: number = 0;
+  _lastValue: string = null;
+  _lastCursor: number = -1;
+  _checkValue: string = null;
+  _checkCursor: number = -1;
 
   constructor(prompt: Prompt) {
     this._prompt = prompt;
     this._lastValue = prompt._value;
   }
 
-  complete() {
+  complete(dN) {
     this._cancelCall();
+
+    let cursor = this._prompt._cursor;
+    let value = this._prompt._value || "";
+
+    if (!value.trim()) {
+      this._prompt._value = "";
+      this._prompt._cursor = lib.wc.strWidth(this._prompt._value);
+      this._prompt._hint = "";
+      this._prompt._render();
+      this._prompt._term.interpret("\r\n");
+      let op = "line";
+      let data = { text: "help list-commands" };
+      window.webkit.messageHandlers.interOp.postMessage({ op, data });
+      return;
+    }
+
+    let realCursor = cursor;
+    let realValue = value;
+    let n = this._n;
+
+    if (this._checkCursor == cursor && this._checkValue == value) {
+      n += dN;
+      cursor = this._lastCursor;
+      value = this._lastValue;
+    } else {
+      n = 0;
+      this._lastCursor = cursor;
+      this._lastValue = value;
+    }
+
     this._call = window.term_apiRequest("completion.for", {
-      input: this._prompt._value
+      cursor: cursor,
+      input: value,
+      n: n
     });
 
     this._call.then(response => {
@@ -303,36 +340,82 @@ class Complete {
         return;
       }
 
-      let line = response.result[0];
-      if (line) {
-        this._prompt._value = line;
-        this._prompt._cursor = lib.wc.strWidth(line);
-        if (response.kind == "command") {
-          this._prompt._hint = response.hint;
-        } else {
-          this._prompt.hint = "";
-        }
+      // may be we are too late or we don't find anything
+      if (
+        realCursor != this._prompt._cursor ||
+        realValue != this._prompt._value
+      ) {
+        return;
       }
-      this._prompt._render();
+
+      let candidate = response.result;
+      if (candidate) {
+        let left = value.substr(0, response.pos + response.len);
+        left = value.substr(0, response.pos) + candidate;
+        let leftWidth = lib.wc.strWidth(left);
+        let right = value.substring(response.pos + response.len);
+
+        this._prompt._value = [left, right].join("");
+        this._prompt._cursor = leftWidth;
+
+        this._checkCursor = this._prompt._cursor;
+        this._checkValue = this._prompt._value;
+        this._n = n;
+      } else {
+        this._checkCursor = -1;
+        this._checkValue = null;
+        this._n = 0;
+      }
+      let hint = this._response.hint;
+      if (hint) {
+        let prefix = value.substr(0, response.start);
+
+        this._prompt._hintPos = lib.wc.strWidth(prefix);
+        this._prompt._hint = response.hint;
+      } else {
+        this._prompt._hintPos = 0;
+        this._prompt._hint = "";
+      }
+
+      this.hint();
     });
   }
 
   hint() {
     this._cancelCall();
-    if (this._response && this._response.input == this._prompt._value) {
+    let value = this._prompt._value;
+    let cursor = this._prompt._cursor;
+
+    if (this._response && this._response.input == value) {
       return;
     }
     this._call = window.term_apiRequest("completion.for", {
-      input: this._prompt._value
+      cursor: cursor,
+      input: this._prompt._value,
+      n: 0
     });
     this._call.then(response => {
       if (!response) {
         return;
       }
 
+      // may be we are too late or we don't find anything
+      if (cursor != this._prompt._cursor || value != this._prompt._value) {
+        return;
+      }
+
       this._response = response;
 
-      this._prompt._hint = response.hint;
+      let hint = this._response.hint;
+      if (hint) {
+        let prefix = value.substr(0, response.start);
+
+        this._prompt._hintPos = lib.wc.strWidth(prefix);
+        this._prompt._hint = response.hint;
+      } else {
+        this._prompt._hintPos = 0;
+        this._prompt._hint = "";
+      }
       this._prompt._render();
     });
   }
@@ -359,6 +442,7 @@ export default class Prompt {
   _startRow = 0;
   _historySearchMode = false;
   _hint: string = "";
+  _hintPos: number = 0;
 
   constructor(term: any) {
     this._term = term;
@@ -373,6 +457,9 @@ export default class Prompt {
     switch (key.fullName) {
       case "tab":
         this._completeIfNeeded();
+        return;
+      case "S-tab":
+        this._completeBackIfNeeded();
         return;
       case "M-f":
       case "M-right":
@@ -400,9 +487,13 @@ export default class Prompt {
         this._cursor = lib.wc.strWidth(this._value);
         break;
       case "C-k":
-        this._value = lib.wc.substring(this._value, 0, this._cursor);
-        this._cursor = lib.wc.strWidth(this._value);
-        this._resetHistory();
+        if (this._historySearchMode) {
+          this._moveUp();
+        } else {
+          this._value = lib.wc.substring(this._value, 0, this._cursor);
+          this._cursor = lib.wc.strWidth(this._value);
+          this._resetHistory();
+        }
         break;
       case "C-u":
         this._value = lib.wc.substr(this._value, this._cursor);
@@ -464,6 +555,12 @@ export default class Prompt {
       case "escape":
         this._historySearchMode = false;
         break;
+      case "linefeed":
+      case "C-j":
+        if (this._historySearchMode) {
+          this._moveDown();
+          return;
+        }
       case "return":
       case "enter":
         if (this._historySearchMode) {
@@ -506,7 +603,13 @@ export default class Prompt {
 
   _completeIfNeeded() {
     if (this._shell && !this._historySearchMode) {
-      this._getComplete().complete();
+      this._getComplete().complete(1);
+    }
+  }
+
+  _completeBackIfNeeded() {
+    if (this._shell && !this._historySearchMode) {
+      this._getComplete().complete(-1);
     }
   }
 
@@ -705,7 +808,7 @@ export default class Prompt {
 
     term.eraseBelow();
 
-    let hintWidth = lib.wc.strWidth(this._hint);
+    let hintWidth = this._hintPos + lib.wc.strWidth(this._hint);
     let valueWidth = lib.wc.strWidth(this._value);
     valueWidth = Math.max(hintWidth, valueWidth);
     if (this._secure) {
@@ -728,6 +831,10 @@ export default class Prompt {
     var cursor = term.saveCursor();
     if (!this._secure) {
       if (this._hint && this._shell) {
+        let pos = this._hintPos + this._valueStartCol();
+        let r = (pos / screenWidth) | 0;
+        let c = pos % screenWidth;
+        term.setCursorPosition(this._startRow + r, c);
         term.screen_.textAttributes.faint = true;
         term.screen_.textAttributes.foregroundSource = 3;
         term.screen_.textAttributes.syncColors();
@@ -831,6 +938,7 @@ export default class Prompt {
     this._shell = opts.shell;
     this._value = "";
     this._hint = "";
+    this._hintPos = 0;
     this._cursor = 0;
     this._startCol = this._term.getCursorColumn();
     this._startRow = this._term.getCursorRow();
@@ -849,6 +957,7 @@ export default class Prompt {
     this._secure = false;
     this._shell = false;
     this._hint = "";
+    this._hintPos = 0;
     this._historySearchMode = false;
   }
 

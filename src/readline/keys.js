@@ -150,9 +150,9 @@ export default function processKeys(s: string, callback: emitKeysCallback) {
       key.name = "return";
     } else if (s === "\n") {
       // enter, should have been called linefeed
-      key.name = "enter";
+      // key.name = "enter";
       // linefeed
-      // key.name = 'linefeed';
+      key.name = "linefeed";
     } else if (s === "\t") {
       // tab
       key.name = "tab";

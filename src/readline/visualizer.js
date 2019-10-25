@@ -18,6 +18,7 @@ let _conversionCommon = {
   space: "␣",
   enter: "↩",
   return: "↩",
+  linefeed: "↩",
   //shift: "⇧",
   shift: "S-",
   ctrl: "C-",
