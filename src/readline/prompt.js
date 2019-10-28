@@ -869,13 +869,16 @@ export default class Prompt {
       return false;
     }
 
+    var tx = event.terminalColumn - 1;
+    var ty = event.terminalRow - 1;
+
     var startRow = this._startRow;
     var lines = this._getHistory()._lines;
     if (this._historySearchMode) {
       startRow += lines.length + 1;
     }
 
-    let dr = event.terminalRow - startRow;
+    let dr = ty - startRow;
     if (dr < 0) {
       if (-dr <= lines.length) {
         let line = lines[lines.length + dr];
@@ -893,7 +896,7 @@ export default class Prompt {
 
     let pos =
       dr * screenWidth +
-      event.terminalColumn -
+      tx -
       (this._historySearchMode ? 2 : this._valueStartCol());
 
     this._cursor = Math.min(Math.max(pos, 0), valueWidth);
