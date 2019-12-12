@@ -56,7 +56,7 @@
 */
 
 // Regexes used for ansi escape code splitting
-var metaKeyCodeReAnywhere = /(?:\x1b)([\[\]{}\-=+_\/,.<>`a-zA-Z0-9])/;
+var metaKeyCodeReAnywhere = /(?:\x1b)([`0-9\-=~!@#$%^&*\(\)_+\[\]\\{}|;':",.//<>?a-zA-Z])/;
 var metaKeyCodeRe = new RegExp("^" + metaKeyCodeReAnywhere.source + "$");
 var functionKeyCodeReAnywhere = new RegExp(
   "(?:\x1b+)(O|N|\\[|\\[\\[)(?:" +
