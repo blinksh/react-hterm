@@ -172,9 +172,9 @@ export default function processKeys(s: string, callback: emitKeysCallback) {
     } else if (s === " " || s === "\x1b ") {
       key.name = "space";
       key.meta = s.length === 2;
-    } else if (s.length === 1 && s <= "\x1a") {
+    } else if (s.length === 1 && s <= "\x1f") {
       // ctrl+letter
-      key.name = String.fromCharCode(s.charCodeAt(0) + "a".charCodeAt(0) - 1);
+      key.name = String.fromCharCode(s.charCodeAt(0) + 64);
       key.ctrl = true;
     } else if (s.length === 1 && s >= "a" && s <= "z") {
       // lowercase letter
