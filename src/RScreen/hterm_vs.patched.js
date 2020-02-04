@@ -3,7 +3,7 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-import { hterm } from "../hterm_all.js";
+import { hterm, lib } from "../hterm_all.js";
 import ReactDOM from "react-dom";
 
 /**
@@ -631,6 +631,60 @@ hterm.VT.OSC["1337"] = function(parseState) {
     this.terminal.displayImage(options);
     io.writeUTF8(queued);
   } else this.terminal.displayImage(options);
+};
+
+/**
+ * Change/Read VT100 text foreground color.
+ */
+hterm.VT.OSC["10"] = function(parseState) {
+  // Args come in as a single string, but extra args will chain to the following
+  // OSC sequences.
+  var args = parseState.args[0].split(";");
+  if (!args) return;
+
+  var colorArg = args.shift();
+  if (colorArg == "?") {
+    // '?' means we should report back the current color value.
+    var colorValue = lib.colors.rgbToX11(this.terminal.getForegroundColor());
+    if (colorValue) {
+      this.terminal.io.sendString("\x1b]10;" + colorValue + "\x07");
+    }
+  } else {
+    var colorX11 = lib.colors.x11ToCSS(colorArg);
+    if (colorX11) this.terminal.setForegroundColor(colorX11);
+  }
+
+  if (args.length > 0) {
+    parseState.args[0] = args.join(";");
+    hterm.VT.OSC["11"].apply(this, [parseState]);
+  }
+};
+
+/**
+ * Change/Read VT100 text background color.
+ */
+hterm.VT.OSC["11"] = function(parseState) {
+  // Args come in as a single string, but extra args will chain to the following
+  // OSC sequences.
+  var args = parseState.args[0].split(";");
+  if (!args) return;
+
+  var colorArg = args.shift();
+  if (colorArg == "?") {
+    // '?' means we should report back the current color value.
+    var colorValue = lib.colors.rgbToX11(this.terminal.getBackgroundColor());
+    if (colorValue) {
+      this.terminal.io.sendString("\x1b]11;" + colorValue + "\x07");
+    }
+  } else {
+    var colorX11 = lib.colors.x11ToCSS(colorArg);
+    if (colorX11) this.terminal.setBackgroundColor(colorX11);
+  }
+
+  if (args.length > 0) {
+    parseState.args[0] = args.join(";");
+    hterm.VT.OSC["12"].apply(this, [parseState]);
+  }
 };
 
 ["CC1", "ESC", "CSI", "OSC", "VT52"].forEach(type => {
