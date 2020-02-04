@@ -1,12 +1,12 @@
 // @flow
-import type { RNodeType, RAttributesType } from './model';
-import { hterm, lib } from '../hterm_all.js';
-import { genKey, touch } from './utils';
-import { WC_PRECALCULATED_CLASSES } from './RNode';
+import type { RNodeType, RAttributesType } from "./model";
+import { hterm, lib } from "../hterm_all.js";
+import { genKey, touch } from "./utils";
+import { WC_PRECALCULATED_CLASSES } from "./RNode";
 
 var __cssStyleSheet = null;
 
-hterm.TextAttributes.prototype.DEFAULT_COLOR = '';
+hterm.TextAttributes.prototype.DEFAULT_COLOR = "";
 
 function __defaultAttributes(): RAttributesType {
   return {
@@ -15,7 +15,7 @@ function __defaultAttributes(): RAttributesType {
     asciiNode: true,
     fci: -1,
     bci: -1,
-    uci: -1,
+    uci: -1
   };
 }
 
@@ -37,7 +37,7 @@ export function setNodeAttributedText(
   attrs: RAttributesType,
   node: RNodeType,
   text: string,
-  wcwidth?: number,
+  wcwidth?: number
 ) {
   node.txt = text;
   if (!attrs.asciiNode && node.attrs.asciiNode) {
@@ -59,7 +59,7 @@ export function createDefaultNode(text: string, wcwidth: number): RNodeType {
     txt: text,
     wcw: wcwidth,
     key: genKey(),
-    attrs: __defaultAttrs,
+    attrs: __defaultAttrs
   };
 }
 
@@ -69,14 +69,14 @@ export function createNode(text: string, wcwidth: number): RNodeType {
     txt: text,
     wcw: wcwidth,
     key: genKey(),
-    attrs: __defaultAttributes(),
+    attrs: __defaultAttributes()
   };
 }
 
 export function createAttributedNode(
   attrs: RAttributesType,
   txt: string,
-  wcw: number | void,
+  wcw: number | void
 ): RNodeType {
   if (wcw === undefined) {
     if (attrs.asciiNode) {
@@ -91,21 +91,34 @@ export function createAttributedNode(
     txt,
     wcw,
     key: genKey(),
-    attrs,
+    attrs
   };
 }
 
 hterm.TextAttributes.prototype.resetColorPalette = function() {
   this.colorPalette = lib.colors.colorPalette.concat();
+  this.refreshCSSPalette();
+  this.syncColors();
+};
 
+hterm.TextAttributes.prototype.refreshCSSPalette = function() {
   if (!__cssStyleSheet) {
-    var style = document.createElement('style');
-    style.type = 'text/css';
-    this.document_.getElementsByTagName('head')[0].appendChild(style);
+    var style = document.createElement("style");
+    style.type = "text/css";
+    this.document_.getElementsByTagName("head")[0].appendChild(style);
     __cssStyleSheet = style;
   }
-  __cssStyleSheet.innerHTML = __generateAttributesStyleSheet(this);
-  this.syncColors();
+
+  if (this._debounce) {
+    clearTimeout(this._debounce);
+    this._debounce = null;
+  }
+
+  var self = this;
+  this._debounce = setTimeout(function() {
+    __cssStyleSheet.innerHTML = __generateAttributesStyleSheet(self);
+    this._debounce = null;
+  }, 10);
 };
 
 function __getBrightIndex(i: number): number {
@@ -129,22 +142,22 @@ hterm.TextAttributes.prototype.attrs = function(): RAttributesType {
     asciiNode: this.asciiNode,
     fci: -1,
     bci: -1,
-    uci: -1,
+    uci: -1
   };
 
-  if (typeof this.foreground === 'number') {
+  if (typeof this.foreground === "number") {
     attrs.fci = this.foreground;
   } else if (this.foreground !== this.DEFAULT_COLOR) {
     attrs.fcs = this.foreground;
   }
 
-  if (typeof this.background === 'number') {
+  if (typeof this.background === "number") {
     attrs.bci = this.background;
   } else if (this.background !== this.DEFAULT_COLOR) {
     attrs.bcs = this.background;
   }
 
-  if (typeof this.underlineColor === 'number') {
+  if (typeof this.underlineColor === "number") {
     attrs.uci = this.underlineColor;
   } else if (this.underlineColor !== this.DEFAULT_COLOR) {
     attrs.ucs = this.underlineColor;
@@ -203,7 +216,7 @@ hterm.TextAttributes.prototype.syncColors = function() {
       this.foreground === this.DEFAULT_COLOR
         ? this.defaultForeground
         : this.foreground;
-    this.foreground = lib.colors.mix(colorToMakeFaint, 'rgb(0, 0, 0)', 0.3333);
+    this.foreground = lib.colors.mix(colorToMakeFaint, "rgb(0, 0, 0)", 0.3333);
   }
 
   if (backgroundSource === this.SRC_DEFAULT) {
@@ -228,35 +241,35 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
   var rows = [];
   for (var i = 0; i < 256; i++) {
     var color = attrs.colorPalette[i];
-    rows.push('span.c' + i + ' { color: ' + color + ';}');
-    rows.push('span.bc' + i + ' { background: ' + color + ';}');
+    rows.push("span.c" + i + " { color: " + color + ";}");
+    rows.push("span.bc" + i + " { background: " + color + ";}");
     rows.push(
-      'span.uc' + i + ' { -webkit-text-decoration-color: ' + color + ';}',
+      "span.uc" + i + " { -webkit-text-decoration-color: " + color + ";}"
     );
   }
-  rows.push('.u { -webkit-text-decoration: underline;}');
-  rows.push('.s { -webkit-text-decoration: line-through;}');
-  rows.push('.us { -webkit-text-decoration: underline line-through;}');
+  rows.push(".u { -webkit-text-decoration: underline;}");
+  rows.push(".s { -webkit-text-decoration: line-through;}");
+  rows.push(".us { -webkit-text-decoration: underline line-through;}");
 
-  rows.push('.u1 { -webkit-text-decoration-style: solid;}');
-  rows.push('.u2 { -webkit-text-decoration-style: double;}');
-  rows.push('.u3 { -webkit-text-decoration-style: wavy;}');
-  rows.push('.u4 { -webkit-text-decoration-style: dotted;}');
-  rows.push('.u5 { -webkit-text-decoration-style: dashed;}');
+  rows.push(".u1 { -webkit-text-decoration-style: solid;}");
+  rows.push(".u2 { -webkit-text-decoration-style: double;}");
+  rows.push(".u3 { -webkit-text-decoration-style: wavy;}");
+  rows.push(".u4 { -webkit-text-decoration-style: dotted;}");
+  rows.push(".u5 { -webkit-text-decoration-style: dashed;}");
 
-  rows.push('span.b { font-weight: bold;}');
-  rows.push('span.i { font-style: italic;}');
-  rows.push('span.wc { display: inline-block; overflow-x:hidden; }');
+  rows.push("span.b { font-weight: bold;}");
+  rows.push("span.i { font-style: italic;}");
+  rows.push("span.wc { display: inline-block; overflow-x:hidden; }");
   for (i = 0; i < WC_PRECALCULATED_CLASSES; i++) {
     rows.push(
-      'span.wc' +
+      "span.wc" +
         i +
-        ' { width: calc(var(--hterm-charsize-width) * ' +
+        " { width: calc(var(--hterm-charsize-width) * " +
         i +
-        ');}',
+        ");}"
     );
   }
-  return rows.join('\n');
+  return rows.join("\n");
 }
 
 export function nodeMatchesAttrs(node: RNodeType, attrs: RAttributesType) {
@@ -320,8 +333,8 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
         str,
         wcNode: false,
         asciiNode,
-        wcStrWidth: len,
-      },
+        wcStrWidth: len
+      }
     ];
   }
 
@@ -339,14 +352,14 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
             str: str.substr(base),
             wcNode: false,
             asciiNode,
-            wcStrWidth: wcStrWidth + (len - i),
+            wcStrWidth: wcStrWidth + (len - i)
           });
         } else {
           rv.push({
             str: substr,
             wcNode: false,
             asciiNode: true,
-            wcStrWidth: substr.length,
+            wcStrWidth: substr.length
           });
         }
         return rv;
@@ -369,7 +382,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
             str: str.substr(base, length),
             wcNode: false,
             asciiNode,
-            wcStrWidth,
+            wcStrWidth
           });
           asciiNode = true;
           wcStrWidth = 0;
@@ -378,7 +391,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
           str: str.substr(i, increment),
           wcNode: true,
           asciiNode: false,
-          wcStrWidth: 2,
+          wcStrWidth: 2
         });
         base = i + increment;
         length = 0;
@@ -392,7 +405,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
       str: str.substr(base, length),
       wcNode: false,
       asciiNode,
-      wcStrWidth,
+      wcStrWidth
     });
   }
 
@@ -402,7 +415,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
 lib.wc.substr = function(
   str: string,
   start: number,
-  opt_width?: number,
+  opt_width?: number
 ): string {
   if (!_nonASCIIRegex.test(str)) {
     return str.substr(start, opt_width);

@@ -634,6 +634,42 @@ hterm.VT.OSC["1337"] = function(parseState) {
 };
 
 /**
+ * Set/read color palette.
+ */
+hterm.VT.OSC["4"] = function(parseState) {
+  // Args come in as a single 'index1;rgb1 ... ;indexN;rgbN' string.
+  // We split on the semicolon and iterate through the pairs.
+  var args = parseState.args[0].split(";");
+
+  var pairCount = parseInt(args.length / 2);
+  var colorPalette = this.terminal.getTextAttributes().colorPalette;
+  var responseArray = [];
+
+  for (var pairNumber = 0; pairNumber < pairCount; ++pairNumber) {
+    var colorIndex = parseInt(args[pairNumber * 2]);
+    var colorValue = args[pairNumber * 2 + 1];
+
+    if (colorIndex >= colorPalette.length) continue;
+
+    if (colorValue == "?") {
+      // '?' means we should report back the current color value.
+      colorValue = lib.colors.rgbToX11(colorPalette[colorIndex]);
+      if (colorValue) responseArray.push(colorIndex + ";" + colorValue);
+
+      continue;
+    }
+
+    colorValue = lib.colors.x11ToCSS(colorValue);
+    if (colorValue) colorPalette[colorIndex] = colorValue;
+  }
+
+  if (responseArray.length)
+    this.terminal.io.sendString("\x1b]4;" + responseArray.join(";") + "\x07");
+
+  this.terminal.getTextAttributes().refreshCSSPalette();
+};
+
+/**
  * Change/Read VT100 text foreground color.
  */
 hterm.VT.OSC["10"] = function(parseState) {
@@ -652,6 +688,7 @@ hterm.VT.OSC["10"] = function(parseState) {
   } else {
     var colorX11 = lib.colors.x11ToCSS(colorArg);
     if (colorX11) this.terminal.setForegroundColor(colorX11);
+    this.terminal.getTextAttributes().refreshCSSPalette();
   }
 
   if (args.length > 0) {
@@ -679,6 +716,7 @@ hterm.VT.OSC["11"] = function(parseState) {
   } else {
     var colorX11 = lib.colors.x11ToCSS(colorArg);
     if (colorX11) this.terminal.setBackgroundColor(colorX11);
+    this.terminal.getTextAttributes().refreshCSSPalette();
   }
 
   if (args.length > 0) {
