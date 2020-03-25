@@ -12,8 +12,8 @@ window.lib = lib;
 window.KeystrokeVisualizer = KeystrokeVisualizer;
 
 
-function installKB(element: HTMLDivElement | null) {
-  const keyboard = new Keyboard(element);
+function installKB(terminal: any, element: HTMLDivElement | null) {
+  const keyboard = new Keyboard(terminal, element);
   if (!element) {
     document.body.append(keyboard.element);
   }
@@ -33,7 +33,7 @@ declare global {
     lib: typeof lib;
     KeystrokeVisualizer: typeof KeystrokeVisualizer;
     term_apiRequest: (name: string, params: {}) => Promise<{}>;
-    installKB: (element: HTMLDivElement | null) => void;
+    installKB: (terminal: any, element: HTMLDivElement | null) => void;
     webkit : {
       messageHandlers: {
         wkScroller: any

@@ -2,6 +2,8 @@ import KeyMap, {
   CSI,
   DEL,
   ESC,
+  CTRL_C,
+  CTRL_D,
   IKeyboard,
   KBActions,
   KeyActionType,
@@ -186,6 +188,7 @@ function _patchKeyDown(
 
 export default class Keyboard implements IKeyboard {
   element: HTMLDivElement;
+  _t: any;
 
   _keyMap = new KeyMap(this);
   _bindings = new Bindings();
@@ -236,7 +239,8 @@ export default class Keyboard implements IKeyboard {
   // custom shortcuts tracker
   _down: Set<string> = new Set();
 
-  constructor(element: HTMLDivElement | null) {
+  constructor(terminal: any, element: HTMLDivElement | null) {
+    this._t = terminal;
     this.element = element || document.createElement('div')
 
     let input = this.element;

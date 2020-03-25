@@ -186,7 +186,7 @@ hterm.ScrollPort.prototype.decorate = function() {
   this.screen_ = doc.createElement('x-screen');
   this.screen_.setAttribute('tabindex', '-1');
   this.screen_.style.cssText =
-    'caret-color: transparent;' +
+    // 'caret-color: transparent;' +
     'display: block;' +
     'font-family: monospace;' +
     'font-size: 15px;' +

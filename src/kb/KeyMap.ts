@@ -65,6 +65,9 @@ export const DEL = '\x7f'; // Delete
 
 const ctl = (ch: string) => String.fromCharCode(ch.charCodeAt(0) - 64);
 
+export const CTRL_C = ctl('c');
+export const CTRL_D = ctl('d');
+
 type KeyDefType = {
   keyCode: number,
   keyCap: string, // two chars string like 'aA' or [UNPRINTABLE]
