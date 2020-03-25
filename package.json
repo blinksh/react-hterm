@@ -1,22 +1,29 @@
 {
-  "name": "react-htrem",
-  "version": "0.1.0",
-  "private": true,
+  "name": "react-hterm",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "jest",
+    "build": "webpack",
+    "postbuild": "cp -f src/index.html dist/hterm.html"
+  },
   "dependencies": {
     "react": "16.4.0",
-    "react-dom": "16.4.0",
-    "react-scripts": "1.1.4"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "react-dom": "16.4.0"
   },
   "devDependencies": {
-    "flow-bin": "0.73.0",
-    "flow-typed": "^2.4.0",
-    "prettier": "1.13.3",
-    "serve": "7.1.5"
+    "@types/jest": "24.0.25",
+    "@types/react": "^16.9.23",
+    "@types/react-dom": "^16.9.5",
+    "closure-webpack-plugin": "^2.3.0",
+    "google-closure-compiler": "^20200224.0.0",
+    "jest": "^24.9.0",
+    "serve": "11.3.0",
+    "ts-jest": "24.3.0",
+    "ts-loader": "^6.2.1",
+    "typescript": "3.8.3",
+    "webpack": "4.41.5",
+    "webpack-cli": "^3.3.10"
   }
 }

@@ -1,0 +1,83 @@
+import { KeyType } from './keys';
+declare type LineType = {
+    num: number;
+    val: string;
+    rel: number;
+};
+declare class History {
+    _prompt: Prompt;
+    _cursor: number;
+    _lastValue: string;
+    _lastPrompt: string;
+    _call: any;
+    _lines: Array<LineType>;
+    _total: number;
+    _found: number;
+    _response: any;
+    constructor(prompt: Prompt);
+    enter(): void;
+    search(): void;
+    _cancelCall(): void;
+    prev(searchMode: boolean): void;
+    next(searchMode: boolean): void;
+    reset(): void;
+    render(): void;
+}
+declare class Complete {
+    _prompt: Prompt;
+    _cursor: number;
+    _lastValue: string;
+    _call: any;
+    _response: any;
+    _n: number;
+    _lastCursor: number;
+    _checkValue: string | null;
+    _checkCursor: number;
+    constructor(prompt: Prompt);
+    complete(dN: number): void;
+    hint(): void;
+    _cancelCall(): void;
+}
+export default class Prompt {
+    _prompt: string;
+    _shell: boolean;
+    _secure: boolean;
+    _term: any;
+    _cursor: number;
+    _row: number;
+    _value: string;
+    _history: History | null;
+    _complete: Complete | null;
+    _startCol: number;
+    _startRow: number;
+    _historySearchMode: boolean;
+    _hint: string;
+    _hintPos: number;
+    constructor(term: any);
+    _valueStartCol(): any;
+    _onKey: (key: KeyType) => void;
+    _searchIfNeeded(): void;
+    _completeIfNeeded(): void;
+    _completeBackIfNeeded(): void;
+    _hintIfNeeded(): void;
+    _moveLeft(): void;
+    _moveRight(): void;
+    _moveUp(): void;
+    _moveDown(): void;
+    _getHistory(): History;
+    _getComplete(): Complete;
+    _resetHistory(): void;
+    _forwardWord(): void;
+    _backWord(): void;
+    _deleteBackWord(): void;
+    _deleteForwardWord(): void;
+    _uppercaseForwardWord(): void;
+    _render(): void;
+    processInput(str: string): void;
+    processMouseClick(event: MouseEvent): boolean | undefined;
+    processMouseScroll(event: WheelEvent): boolean;
+    promptB64(b64: string): void;
+    reset(): void;
+    resize(): void;
+}
+export {};
