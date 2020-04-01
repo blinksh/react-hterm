@@ -241,6 +241,7 @@ hterm.Terminal.prototype.setCssCursorPos = function(pos: {
   if (__prevCursorPos.col !== pos.col) {
     this.setCursorCssVar('cursor-offset-col', pos.col + '');
   }
+  this.blinkCursorPos = pos;
   __prevCursorPos = pos;
 };
 

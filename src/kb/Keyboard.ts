@@ -2,8 +2,6 @@ import KeyMap, {
   CSI,
   DEL,
   ESC,
-  CTRL_C,
-  CTRL_D,
   IKeyboard,
   KBActions,
   KeyActionType,
@@ -239,11 +237,26 @@ export default class Keyboard implements IKeyboard {
   // custom shortcuts tracker
   _down: Set<string> = new Set();
 
+  readonly caret: HTMLDivElement = document.createElement('div');
+
   constructor(terminal: any, element: HTMLDivElement | null) {
     this._t = terminal;
     this.element = element || document.createElement('div')
 
     let input = this.element;
+
+    this.caret.innerHTML = '&#8288;';
+
+    var el = document.getElementById("hterm:row-nodes")
+
+    el?.append(this.caret);
+
+    this.caret.style.position = "absolute";
+    this.caret.style.zIndex = '1000';
+    // this.caret.style.left = "20px";
+    // this.caret.style.top = "20px";
+
+    // input.appendChild(this._caret);
 
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('spellcheck', 'false');
@@ -679,6 +692,7 @@ export default class Keyboard implements IKeyboard {
   focus(value: boolean) {
     if (value) {
       this.element.focus();
+      window.getSelection()?.collapse(this.caret);
     } else {
       this.element.blur();
     }
@@ -687,7 +701,60 @@ export default class Keyboard implements IKeyboard {
   _onIME = (e: CompositionEvent) => {
     let type = e.type;
     let data = e.data || '';
-    op('ime', { type, data });
+    // op('ime', { type, data });
+
+    var scrollPort = this._t.scrollPort_;
+
+    let caret = this.caret;
+    // @ts-ignore
+    caret.style.backgroundColor = lib.colors.setAlpha(t.getCursorColor(), 1);
+    caret.style.color = scrollPort.getBackgroundColor();
+
+    var screenCols = this._t.screenSize.width;
+    var screenRows = this._t.screenSize.height;
+    var col = this._t.screen_.cursorPosition.column;
+    var row = this._t.screen_.cursorPosition.row;
+
+    // this.caret.style.left = `calc(var(--hterm-charsize-width) * ${col})`
+    // this.caret.style.top = `calc(var(--hterm-charsize-height) * ${row})`
+
+    // @ts-ignore
+    var length = lib.wc.strWidth(data);
+
+    caret.style.bottom = 'auto';
+    caret.style.top = 'auto';
+
+    if (length >= screenCols) {
+      // We are wider than the screen
+      caret.style.left = '0px';
+      caret.style.right = '0px';
+      if (row < screenRows * 0.8) {
+        caret.style.top =
+          `calc(var(--hterm-charsize-height) * ${row + 1})`;
+      } else {
+        caret.style.top =
+          `calc(var(--hterm-charsize-height) * ${row - Math.floor(length / (screenCols + 1)) - 1})`;
+      }
+    } else if (col + length <= screenCols) {
+      // we are inlined
+      caret.style.left =
+        `calc(var(--hterm-charsize-width) * ${col})`;
+      caret.style.top =
+        `calc(var(--hterm-charsize-height) * ${row})`;
+      caret.style.right = 'auto';
+    } else if (row == 0) {
+      // we are at the end of line but need more space at the bottom
+      caret.style.top =
+        `calc(var(--hterm-charsize-height) * ${row + 1})`;
+      caret.style.left = 'auto';
+      caret.style.right = '0px';
+    } else {
+      // we are at the end of line but need more space at the top
+      caret.style.top =
+        `calc(var(--hterm-charsize-height) * ${row - 1}`;
+      caret.style.left = 'auto';
+      caret.style.right = '0px';
+    }
 
     if (type == 'compositionend') {
       this._output(data);
@@ -735,9 +802,7 @@ export default class Keyboard implements IKeyboard {
 
   _output = (data: string | null) => {
     this._up.clear();
-    // this.element.value = ' ';
-    // this.element.selectionStart = 1;
-    // this.element.selectionEnd = 1;
+    this.caret.innerHTML = '&#8288;';
     if (data) {
       op('out', { data });
     }
@@ -752,9 +817,7 @@ export default class Keyboard implements IKeyboard {
       Meta: new Set(),
       Control: new Set(),
     };
-    // this.element.value = ' ';
-    // this.element.selectionStart = 1;
-    // this.element.selectionEnd = 1;
+    this.caret.innerHTML = '&#8288;';
     this.hasSelection = hasSelection;
   };
 

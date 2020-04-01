@@ -170,7 +170,12 @@ hterm.Screen.prototype.setCursorPosition = function(
 };
 
 hterm.Screen.prototype.syncSelectionCaret = function(selection: any) {
-  selection.collapse(null);
+  let caret = window._kb.caret;
+  if (caret) {
+    // caret.innerText = ' ';
+    selection.collapse(caret, 0);
+    // caret.innerText = '';
+  }
   // TODO:
   //try {
   //selection.collapse(this.cursorNode_, this.cursorOffset_);
@@ -228,7 +233,6 @@ hterm.Screen.prototype.maybeClipCurrentRow = function() {
 };
 
 function __flattenNodes(row: RRowType, startNodeIdx: number) {
-  var len = row.nodes.length;
   var spliceCount = 0;
   var startNode = row.nodes[startNodeIdx];
   var text = startNode.txt;
