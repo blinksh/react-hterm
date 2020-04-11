@@ -262,7 +262,7 @@ export default class Keyboard implements IKeyboard {
     input.setAttribute('spellcheck', 'false');
     input.setAttribute('autocorrect', 'off');
     input.setAttribute('autocapitalize', 'none');
-    input.setAttribute('autofocus', 'true');
+    // input.setAttribute('autofocus', 'true');
 
     input.setAttribute('contenteditable', 'plaintext-only');
 
@@ -701,7 +701,7 @@ export default class Keyboard implements IKeyboard {
   _onIME = (e: CompositionEvent) => {
     let type = e.type;
     let data = e.data || '';
-    // op('ime', { type, data });
+    op('ime', { type, data });
 
     var scrollPort = this._t.scrollPort_;
 
@@ -710,10 +710,10 @@ export default class Keyboard implements IKeyboard {
     caret.style.backgroundColor = lib.colors.setAlpha(t.getCursorColor(), 1);
     caret.style.color = scrollPort.getBackgroundColor();
 
-    var screenCols = this._t.screenSize.width;
-    var screenRows = this._t.screenSize.height;
-    var col = this._t.screen_.cursorPosition.column;
-    var row = this._t.screen_.cursorPosition.row;
+    const screenCols = this._t.screenSize.width;
+    const screenRows = this._t.screenSize.height;
+    const col = this._t.screen_.cursorPosition.column;
+    const row = this._t.screen_.cursorPosition.row;
 
     // this.caret.style.left = `calc(var(--hterm-charsize-width) * ${col})`
     // this.caret.style.top = `calc(var(--hterm-charsize-height) * ${row})`
