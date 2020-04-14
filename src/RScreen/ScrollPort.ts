@@ -164,6 +164,7 @@ hterm.ScrollPort.prototype.decorate = function() {
     '  display: block;' +
     '  height: var(--hterm-charsize-height);' +
     '  line-height: var(--hterm-charsize-height);' +
+    '  overflow-x: hidden;' +
     '  isolation: isolate;' +
     '}';
   doc.head.appendChild(style);

@@ -253,10 +253,9 @@ export default class Keyboard implements IKeyboard {
 
     this.caret.style.position = "absolute";
     this.caret.style.zIndex = '1000';
-    // this.caret.style.left = "20px";
-    // this.caret.style.top = "20px";
 
-    // input.appendChild(this._caret);
+    input.addEventListener('focus', this._onFocus);
+    input.addEventListener('blur', this._onBlur);
 
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('spellcheck', 'false');
@@ -427,7 +426,8 @@ export default class Keyboard implements IKeyboard {
 
   _onBeforeInput = (e: InputEvent) => {
     if (this._lang === 'dictation') {
-      op('voice', { data: e.data || '' });
+      this._moveCaret(e.data || '')
+      // op('voice', { data: e.data || '' });
       return;
     }
 
@@ -693,16 +693,22 @@ export default class Keyboard implements IKeyboard {
     if (value) {
       this.element.focus();
       window.getSelection()?.collapse(this.caret);
+      this._t?.onFocusChange__(true);
     } else {
       this.element.blur();
+      this._t?.onFocusChange__(false);
     }
   }
 
-  _onIME = (e: CompositionEvent) => {
-    let type = e.type;
-    let data = e.data || '';
-    op('ime', { type, data });
+  _onFocus(e: Event) {
+    this._t?.onFocusChange__(true);
+  }
 
+  _onBlur(e: Event) {
+    this._t?.onFocusChange__(false);
+  }
+
+  _moveCaret(data: String) {
     var scrollPort = this._t.scrollPort_;
 
     let caret = this.caret;
@@ -723,6 +729,12 @@ export default class Keyboard implements IKeyboard {
 
     caret.style.bottom = 'auto';
     caret.style.top = 'auto';
+    caret.style.left = 'auto';
+    caret.style.right = 'auto';
+
+    if (length == 0) {
+      return;
+    }
 
     if (length >= screenCols) {
       // We are wider than the screen
@@ -755,6 +767,14 @@ export default class Keyboard implements IKeyboard {
       caret.style.left = 'auto';
       caret.style.right = '0px';
     }
+  }
+
+  _onIME = (e: CompositionEvent) => {
+    let type = e.type;
+    let data = e.data || '';
+    op('ime', { type, data });
+
+    this._moveCaret(data);
 
     if (type == 'compositionend') {
       this._output(data);
@@ -796,7 +816,7 @@ export default class Keyboard implements IKeyboard {
     this._langWithDeletes = this._lang === 'ko-KR';
     this._stateReset(this.hasSelection);
     if (this._lang !== 'dictation') {
-      op('voice', { data: '' });
+      this._moveCaret('');
     }
   }
 
