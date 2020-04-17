@@ -784,3 +784,270 @@ hterm.Terminal.prototype.getRowsText = function(start: number, end: number) {
 
   return ary.join('');
 };
+
+hterm.Terminal.prototype.setAlternateMode = function(state: any) {
+  
+  var cursor = this.saveCursor();
+  this.screen_ = state ? this.alternateScreen_ : this.primaryScreen_;
+  this.scrollbackRows_ = state ? this.alternateScrollbackRows_ : this.primaryScrollbackRows_;
+  this.scrollPort_.syncScrollHeight();
+
+  if (
+    this.screen_.rowsArray.length &&
+    this.screen_.rowsArray[0].n != this.scrollbackRows_.length
+  ) {
+    // If the screen changed sizes while we were away, our rowIndexes may
+    // be incorrect.
+    var offset = this.scrollbackRows_.length;
+    var ary = this.screen_.rowsArray;
+    for (var i = 0; i < ary.length; i++) {
+      var row = ary[i];
+      row.n = offset + i;
+      touch(row);
+    }
+  }
+
+  this.realizeWidth_(this.screenSize.width);
+  this.realizeHeight_(this.screenSize.height);
+  this.scrollPort_.syncScrollHeight();
+  this.scrollPort_.invalidate();
+
+  this.restoreCursor(cursor);
+  this.scrollPort_.resize(true);
+};
+
+hterm.Terminal.prototype.getRowCount = function() {
+  return this.scrollbackRows_.length + this.screen_.rowsArray.length;
+};
+
+hterm.Terminal.prototype.realizeHeight_ = function(rowCount: number) {
+  if (rowCount <= 0)
+    throw new Error('Attempt to realize bad height: ' + rowCount);
+
+  var deltaRows = rowCount - this.screen_.getHeight();
+
+  this.screenSize.height = rowCount;
+
+  var cursor = this.saveCursor();
+
+  if (deltaRows < 0) {
+    // Screen got smaller.
+    deltaRows *= -1;
+    while (deltaRows) {
+      var lastRow = this.scrollbackRows_.length + this.screen_.rowsArray.length - 1;
+      if (lastRow - this.scrollbackRows_.length == cursor.row) break;
+
+      if (this.getRowText(lastRow)) break;
+
+      this.screen_.popRow();
+      deltaRows--;
+    }
+
+    var ary = this.screen_.shiftRows(deltaRows);
+    this.scrollbackRows_.push.apply(this.scrollbackRows_, ary);
+
+    // We just removed rows from the top of the screen, we need to update
+    // the cursor to match.
+    cursor.row = Math.max(cursor.row - deltaRows, 0);
+  } else if (deltaRows > 0) {
+    // Screen got larger.
+
+    if (deltaRows <= this.scrollbackRows_.length) {
+      var scrollbackCount = Math.min(deltaRows, this.scrollbackRows_.length);
+      var rows = this.scrollbackRows_.splice(
+        this.scrollbackRows_.length - scrollbackCount,
+        scrollbackCount,
+      );
+      this.screen_.unshiftRows(rows);
+      deltaRows -= scrollbackCount;
+      cursor.row += scrollbackCount;
+    }
+
+    if (deltaRows) this.appendRows_(deltaRows);
+  }
+
+  this.setVTScrollRegion(null, null);
+  this.restoreCursor(cursor);
+};
+
+hterm.Terminal.prototype.onMouse_Blink = function(e: MouseWheelEvent) {
+  // @ts-ignore
+  if (e.processedByTerminalHandler_) {
+    // We register our event handlers on the document, as well as the cursor
+    // and the scroll blocker.  Mouse events that occur on the cursor or
+    // scroll blocker will also appear on the document, but we don't want to
+    // process them twice.
+    //
+    // We can't just prevent bubbling because that has other side effects, so
+    // we decorate the event object with this property instead.
+    return;
+  }
+
+  // Consume navigation events.  Button 3 is usually "browser back" and
+  // button 4 is "browser forward" which we don't want to happen.
+  if (e.button > 2) {
+    e.preventDefault();
+    // We don't return so click events can be passed to the remote below.
+  }
+
+  var reportMouseEvents = (!this.defeatMouseReports_ &&
+      this.vt.mouseReport != this.vt.MOUSE_REPORT_DISABLED);
+
+  // @ts-ignore
+  e.processedByTerminalHandler_ = true;
+
+  // Handle auto hiding of mouse cursor while typing.
+  if (this.mouseHideWhileTyping_ && !this.mouseHideDelay_) {
+    // Make sure the mouse cursor is visible.
+    this.syncMouseStyle();
+    // This debounce isn't perfect, but should work well enough for such a
+    // simple implementation.  If the user moved the mouse, we enabled this
+    // debounce, and then moved the mouse just before the timeout, we wouldn't
+    // debounce that later movement.
+    this.mouseHideDelay_ = setTimeout(() => this.mouseHideDelay_ = null, 1000);
+  }
+
+  // One based row/column stored on the mouse event.
+  // @ts-ignore
+  e.terminalRow = parseInt((e.clientY - this.scrollPort_.visibleRowTopMargin) /
+                           this.scrollPort_.characterSize.height) + 1;
+  // @ts-ignore                           
+  e.terminalColumn = parseInt(e.clientX /
+                              this.scrollPort_.characterSize.width) + 1;
+
+  // @ts-ignore
+  if (e.type == 'mousedown' && e.terminalColumn > this.screenSize.width) {
+    // Mousedown in the scrollbar area.
+    return;
+  }
+
+  if (this.options_.cursorVisible && !reportMouseEvents) {
+    // If the cursor is visible and we're not sending mouse events to the
+    // host app, then we want to hide the terminal cursor when the mouse
+    // cursor is over top.  This keeps the terminal cursor from interfering
+    // with local text selection.
+    // @ts-ignore
+    if (e.terminalRow - 1 == this.screen_.cursorPosition.row &&
+        // @ts-ignore
+        e.terminalColumn - 1 == this.screen_.cursorPosition.column) {
+      this.cursorNode_.style.display = 'none';
+    } else if (this.cursorNode_.style.display == 'none') {
+      this.cursorNode_.style.display = '';
+    }
+  }
+
+  if (e.type == 'mousedown') {
+    this.contextMenu.hide(e);
+
+    if (e.altKey || !reportMouseEvents) {
+      // If VT mouse reporting is disabled, or has been defeated with
+      // alt-mousedown, then the mouse will act on the local selection.
+      this.defeatMouseReports_ = true;
+      this.setSelectionEnabled(true);
+    } else {
+      // Otherwise we defer ownership of the mouse to the VT.
+      this.defeatMouseReports_ = false;
+      this.document_.getSelection().collapseToEnd();
+      this.setSelectionEnabled(false);
+      e.preventDefault();
+    }
+  }
+
+  if (!reportMouseEvents) {
+    if (e.type == 'dblclick') {
+      this.screen_.expandSelection(this.document_.getSelection());
+      if (this.copyOnSelect)
+        this.copySelectionToClipboard(this.document_);
+    }
+
+    if (e.type == 'click' && !e.shiftKey && (e.ctrlKey || e.metaKey)) {
+      // Debounce this event with the dblclick event.  If you try to doubleclick
+      // a URL to open it, Chrome will fire click then dblclick, but we won't
+      // have expanded the selection text at the first click event.
+      clearTimeout(this.timeouts_.openUrl);
+      this.timeouts_.openUrl = setTimeout(this.openSelectedUrl_.bind(this),
+                                          500);
+      return;
+    }
+
+    if (e.type == 'mousedown') {
+      if (e.ctrlKey && e.button == 2 /* right button */) {
+        e.preventDefault();
+        this.contextMenu.show(e, this);
+      } else if (e.button == this.mousePasteButton ||
+          (this.mouseRightClickPaste && e.button == 2 /* right button */)) {
+        if (!this.paste())
+          console.warn('Could not paste manually due to web restrictions');
+      }
+    }
+
+    if (e.type == 'mouseup' && e.button == 0 && this.copyOnSelect &&
+        !this.document_.getSelection().isCollapsed) {
+      this.copySelectionToClipboard(this.document_);
+    }
+
+    if ((e.type == 'mousemove' || e.type == 'mouseup') &&
+        this.scrollBlockerNode_.engaged) {
+      // Disengage the scroll-blocker after one of these events.
+      this.scrollBlockerNode_.engaged = false;
+      this.scrollBlockerNode_.style.top = '-99px';
+    }
+
+    // Emulate arrow key presses via scroll wheel events.
+    if (this.scrollWheelArrowKeys_ && !e.shiftKey &&
+        this.keyboard.applicationCursor && !this.isPrimaryScreen()) {
+      if (e.type == 'wheel') {
+        const delta = this.scrollPort_.scrollWheelDelta(e);
+
+        // Helper to turn a wheel event delta into a series of key presses.
+        // @ts-ignore
+        const deltaToArrows = (distance, charSize, arrowPos, arrowNeg) => {
+          if (distance == 0) {
+            return '';
+          }
+
+          // Convert the scroll distance into a number of rows/cols.
+          const cells = lib.f.smartFloorDivide(Math.abs(distance), charSize);
+          const data = '\x1bO' + (distance < 0 ? arrowNeg : arrowPos);
+          return data.repeat(cells);
+        };
+
+        // The order between up/down and left/right doesn't really matter.
+        this.io.sendString(
+            // Up/down arrow keys.
+            deltaToArrows(delta.y, this.scrollPort_.characterSize.height,
+                          'A', 'B') +
+            // Left/right arrow keys.
+            deltaToArrows(delta.x, this.scrollPort_.characterSize.width,
+                          'C', 'D')
+        );
+
+        e.preventDefault();
+      }
+    }
+  } else /* if (this.reportMouseEvents) */ {
+    if (!this.scrollBlockerNode_.engaged) {
+      if (e.type == 'mousedown') {
+        // Move the scroll-blocker into place if we want to keep the scrollport
+        // from scrolling.
+        this.scrollBlockerNode_.engaged = true;
+        this.scrollBlockerNode_.style.top = (e.clientY - 5) + 'px';
+        this.scrollBlockerNode_.style.left = (e.clientX - 5) + 'px';
+      } else if (e.type == 'mousemove') {
+        // Oh.  This means that drag-scroll was disabled AFTER the mouse down,
+        // in which case it's too late to engage the scroll-blocker.
+        this.document_.getSelection().collapseToEnd();
+        e.preventDefault();
+      }
+    }
+
+    this.onMouse(e);
+  }
+
+  if (e.type == 'mouseup' && this.document_.getSelection().isCollapsed) {
+    // Restore this on mouseup in case it was temporarily defeated with a
+    // alt-mousedown.  Only do this when the selection is empty so that
+    // we don't immediately kill the users selection.
+    this.defeatMouseReports_ = false;
+  }
+};

@@ -367,7 +367,9 @@ hterm.ScrollPort.prototype.decorate = function() {
       self.onScroll_();
     },
     // @ts-ignore
-    { scrollingX: false },
+    window.t
+    // @ts-ignore
+    // { scrollingX: false },
   );
 
   this.scroller_.setDimensions(
@@ -847,7 +849,7 @@ hterm.ScrollPort.prototype.measureCharacterSize = function(opt_weight: any) {
   return size;
 };
 
-hterm.ScrollPort.prototype.resize = function() {
+hterm.ScrollPort.prototype.resize = function(force = false) {
   this.currentScrollbarWidthPx =
     hterm.getClientWidth(this.screen_) - this.screen_.clientWidth;
 
@@ -880,7 +882,7 @@ hterm.ScrollPort.prototype.resize = function() {
     if (pos < 0) {
       pos = 0;
     }
-    self.scroller_.scrollTo(0, pos, false);
+    self.scroller_.scrollTo(0, pos, false, force);
     //self.scrollRowToBottom(self.rowProvider_.getRowCount());
     self.scheduleRedraw();
   });

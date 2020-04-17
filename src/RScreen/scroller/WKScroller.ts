@@ -10,9 +10,11 @@ export default class WKScroller {
   _contentWidth = 0;
   _contentHeight = 0;
   _callback: any = null;
+  _t: any
 
-  constructor(callback: any) {
+  constructor(callback: any, t: any) {
     this._callback = callback;
+    this._t = t
   }
 
   _postMessage(message: any) {
@@ -59,6 +61,8 @@ export default class WKScroller {
       op: 'resize',
       viewSize: __nsEncodeCGSize(this._viewWidth, this._viewHeight),
       contentSize: __nsEncodeCGSize(this._contentWidth, this._contentHeight),
+      isPrimary: this._t.screen_ === this._t.primaryScreen_,
+      characterSize: __nsEncodeCGSize(this._t.scrollPort_.characterSize.width, this._t.scrollPort_.characterSize.height)
     });
   }
 
@@ -69,12 +73,13 @@ export default class WKScroller {
       this._callback(x, y, z);
     }
   }
-  scrollTo(x: number, y: number, animated: boolean) {
-    if (this._x === x && this._y === y) {
+  scrollTo(x: number, y: number, animated: boolean, force = false) {
+    if (this._x === x && this._y === y && !force) {
       return;
     }
     this._x = x;
     this._y = y;
-    this._postMessage({ op: 'scrollTo', x, y, animated });
+    var isPrimary = this._t.screen_ === this._t.primaryScreen_
+    this._postMessage({ op: 'scrollTo', x, y, animated, isPrimary });
   }
 }

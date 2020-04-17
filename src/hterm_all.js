@@ -12256,7 +12256,11 @@ hterm.Terminal = function(opt_profileId) {
   this.document_ = window.document;
 
   // The rows that have scrolled off screen and are no longer addressable.
-  this.scrollbackRows_ = [];
+  
+  this.primaryScrollbackRows_ = [];
+  this.alternateScrollbackRows_ = [];
+
+  this.scrollbackRows_ = this.primaryScrollbackRows_;
 
   // Saved tab stops.
   this.tabStops_ = [];
@@ -13464,6 +13468,8 @@ hterm.Terminal.prototype.clearScrollback = function() {
   this.scrollEnd();
 
   this.scrollbackRows_.length = 0;
+  this.primaryScrollbackRows_.length = 0;
+  this.alternateScrollbackRows_.length = 0;
   this.scrollPort_.resetCache();
 
   [this.primaryScreen_, this.alternateScreen_].forEach(screen => {
@@ -14130,6 +14136,7 @@ hterm.Terminal.prototype.print = function(str) {
  *     inclusive.
  */
 hterm.Terminal.prototype.setVTScrollRegion = function(scrollTop, scrollBottom) {
+
   if (scrollTop == 0 && scrollBottom == this.screenSize.height - 1) {
     this.vtScrollTop_ = null;
     this.vtScrollBottom_ = null;
@@ -14913,45 +14920,6 @@ hterm.Terminal.prototype.setReverseWraparound = function(state) {
   this.options_.reverseWraparound = state;
 };
 
-/**
- * Selects between the primary and alternate screens.
- *
- * If alternate mode is on, the alternate screen is active.  Otherwise the
- * primary screen is active.
- *
- * Swapping screens has no effect on the scrollback buffer.
- *
- * Each screen maintains its own cursor position.
- *
- * Defaults to off.
- *
- * @param {boolean} state True to set alternate mode, false to unset.
- */
-hterm.Terminal.prototype.setAlternateMode = function(state) {
-  var cursor = this.saveCursor();
-  this.screen_ = state ? this.alternateScreen_ : this.primaryScreen_;
-
-  if (
-    this.screen_.rowsArray.length &&
-    this.screen_.rowsArray[0].rowIndex != this.scrollbackRows_.length
-  ) {
-    // If the screen changed sizes while we were away, our rowIndexes may
-    // be incorrect.
-    var offset = this.scrollbackRows_.length;
-    var ary = this.screen_.rowsArray;
-    for (var i = 0; i < ary.length; i++) {
-      ary[i].rowIndex = offset + i;
-    }
-  }
-
-  this.realizeWidth_(this.screenSize.width);
-  this.realizeHeight_(this.screenSize.height);
-  this.scrollPort_.syncScrollHeight();
-  this.scrollPort_.invalidate();
-
-  this.restoreCursor(cursor);
-  this.scrollPort_.resize();
-};
 
 /**
  * Set the cursor-blink mode bit.
