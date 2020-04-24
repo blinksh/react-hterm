@@ -1015,7 +1015,7 @@ hterm.Terminal.prototype.onMouse_Blink = function(e: MouseWheelEvent) {
         // The order between up/down and left/right doesn't really matter.
         this.io.sendString(
             // Up/down arrow keys.
-            deltaToArrows(delta.y, this.scrollPort_.characterSize.height,
+            deltaToArrows(-delta.y, this.scrollPort_.characterSize.height,
                           'A', 'B') +
             // Left/right arrow keys.
             deltaToArrows(delta.x, this.scrollPort_.characterSize.width,

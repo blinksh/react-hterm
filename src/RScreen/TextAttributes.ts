@@ -262,7 +262,7 @@ function __generateAttributesStyleSheet(attrs: hterm.TextAttributes): string {
 
   rows.push('span.b { font-weight: bold;}');
   rows.push('span.i { font-style: italic;}');
-  rows.push('span.wc { display: inline-block; overflow-x:hidden; }');
+  rows.push('span.wc { display: inline-block; display: -webkit-inline-box; overflow-x:hidden; }');
   for (i = 0; i < WC_PRECALCULATED_CLASSES; i++) {
     rows.push(
       'span.wc' +
