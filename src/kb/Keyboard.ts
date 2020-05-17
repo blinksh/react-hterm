@@ -8,9 +8,9 @@ import KeyMap, {
   KeyDownType,
   KeyInfoType,
   op,
-} from './KeyMap';
-import { toUIKitFlags, UIKitFlagsToObject } from './UIKeyModifierFlags';
-import Bindings, { BindingAction, KeyBinding } from './Bindings';
+} from "./KeyMap";
+import { toUIKitFlags, UIKitFlagsToObject } from "./UIKeyModifierFlags";
+import Bindings, { BindingAction, KeyBinding } from "./Bindings";
 
 const CANCEL = KBActions.CANCEL;
 const DEFAULT = KBActions.DEFAULT;
@@ -18,16 +18,16 @@ const PASS = KBActions.PASS;
 const STRIP = KBActions.STRIP;
 
 type KeyCode = {
-  keyCode: number,
-  key: string,
-  code: string,
-  id: string,
+  keyCode: number;
+  key: string;
+  code: string;
+  id: string;
 };
 
-type KeyAction = '' | 'escape';
+type KeyAction = "" | "escape";
 
 function hex_to_ascii(hex: string): string {
-  let str = '';
+  let str = "";
   let len = hex.length;
   for (let n = 0; n < len; n += 2) {
     str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
@@ -36,71 +36,71 @@ function hex_to_ascii(hex: string): string {
 }
 
 function _action(action: KeyAction) {
-  if (action !== 'escape') {
+  if (action !== "escape") {
     return null;
   }
 
   return {
     keyCode: 27,
-    code: '[Escape]',
-    key: '[Escape]',
+    code: "[Escape]",
+    key: "[Escape]",
   };
 }
 
 type KeyModifier =
-  | ''
-  | 'Escape'
-  | '8-bit'
-  | 'Shift'
-  | 'Control'
-  | 'Meta'
-  | 'Meta-Escape';
+  | ""
+  | "Escape"
+  | "8-bit"
+  | "Shift"
+  | "Control"
+  | "Meta"
+  | "Meta-Escape";
 
 type KeyConfig = {
-  code: KeyCode,
-  up: KeyAction,
-  down: KeyAction,
-  mod: KeyModifier,
-  ignoreAccents: boolean,
+  code: KeyCode;
+  up: KeyAction;
+  down: KeyAction;
+  mod: KeyModifier;
+  ignoreAccents: boolean;
 };
 
 type KeyConfigPair = {
-  left: KeyConfig,
-  right: KeyConfig,
-  bothAsLeft: boolean,
+  left: KeyConfig;
+  right: KeyConfig;
+  bothAsLeft: boolean;
 };
 
 type KBConfig = {
-  capsLock: KeyConfig,
-  shift: KeyConfigPair,
-  control: KeyConfigPair,
-  option: KeyConfigPair,
-  command: KeyConfigPair,
-  fn: KeyBinding,
-  cursor: KeyBinding,
+  capsLock: KeyConfig;
+  shift: KeyConfigPair;
+  control: KeyConfigPair;
+  option: KeyConfigPair;
+  command: KeyConfigPair;
+  fn: KeyBinding;
+  cursor: KeyBinding;
 
-  bindings: { [index: string]: BindingAction },
-  shortcuts: Array<{ action: BindingAction, input: string, modifiers: number }>,
+  bindings: { [index: string]: BindingAction };
+  shortcuts: Array<{ action: BindingAction; input: string; modifiers: number }>;
 };
 
 const _holders = new Set([
-  '20:0',
-  '16:1',
-  '16:2',
-  '17:1',
-  '17:2',
-  '18:1',
-  '18:2',
-  '91:1',
-  '91:2',
-  '93:0',
+  "20:0",
+  "16:1",
+  "16:2",
+  "17:1",
+  "17:2",
+  "18:1",
+  "18:2",
+  "91:1",
+  "91:2",
+  "93:2",
 ]);
 
-const _leftShift = '16:1';
-const _leftControl = '17:1';
-const _leftOption = '18:1';
-const _leftCommand = '91:1';
-const _capsLockID = '20:0';
+const _leftShift = "16:1";
+const _leftControl = "17:1";
+const _leftOption = "18:1";
+const _leftCommand = "91:1";
+const _capsLockID = "20:0";
 
 // We track key by keyCode, code, location and key
 function _keyId(e: KeyboardEvent): string {
@@ -110,13 +110,13 @@ function _keyId(e: KeyboardEvent): string {
     // we can identitfy with pair keyCode and loc
     return `${keyCode}:${loc}`;
   }
-  let key = (e.key || '').toLowerCase();
+  let key = (e.key || "").toLowerCase();
   return `${keyCode}:${loc}:${key}`;
 }
 
 function _removeAccents(str: string): string {
-  let res = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  let tmp = res.replace(/^[\u02c6\u00a8\u00b4\u02dc\u0060]/, '');
+  let res = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let tmp = res.replace(/^[\u02c6\u00a8\u00b4\u02dc\u0060]/, "");
   if (tmp) {
     res = tmp;
   }
@@ -134,7 +134,7 @@ function _patchKeyDown(
   keyDown: KeyDownType,
   keyMap: KeyMap,
   isHKB: boolean,
-  e: KeyboardEvent | null,
+  e: KeyboardEvent | null
 ): KeyDownType {
   if (!e) {
     return keyDown;
@@ -146,11 +146,11 @@ function _patchKeyDown(
     let kc = e.keyCode;
 
     if (
-      (kc === 8 && ch === 'h') ||
-      (kc === 9 && ch === 'i') ||
-      (kc === 13 && ch === 'c') ||
-      (kc === 13 && ch === 'm') ||
-      (kc === 27 && ch === '[')
+      (kc === 8 && ch === "h") ||
+      (kc === 9 && ch === "i") ||
+      (kc === 13 && ch === "c") ||
+      (kc === 13 && ch === "m") ||
+      (kc === 27 && ch === "[")
     ) {
       keyDown.keyCode = keyMap.keyCode(ch) || keyDown.keyCode;
       return keyDown;
@@ -158,11 +158,11 @@ function _patchKeyDown(
 
     let c = e.code;
     if (
-      (kc === 8 && c === 'KeyH') ||
-      (kc === 9 && c === 'KeyI') ||
-      (kc === 13 && c === 'KeyC') ||
-      (kc === 13 && c === 'KeyM') ||
-      (kc === 27 && c === 'BracketLeft')
+      (kc === 8 && c === "KeyH") ||
+      (kc === 9 && c === "KeyI") ||
+      (kc === 13 && c === "KeyC") ||
+      (kc === 13 && c === "KeyM") ||
+      (kc === 27 && c === "BracketLeft")
     ) {
       keyDown.keyCode = keyMap.keyCode(c) || keyDown.keyCode;
       return keyDown;
@@ -191,7 +191,7 @@ export default class Keyboard implements IKeyboard {
   _keyMap = new KeyMap(this);
   _bindings = new Bindings();
 
-  _lang: string = 'en';
+  _lang: string = "en";
   _langWithDeletes = false;
   _isHKB = false;
 
@@ -203,7 +203,7 @@ export default class Keyboard implements IKeyboard {
   _removeAccents = false;
 
   _metaSendsEscape: boolean = true;
-  _altSendsWhat: 'escape' | '8-bit' = 'escape';
+  _altSendsWhat: "escape" | "8-bit" = "escape";
 
   _ignoreAccents = {
     AltLeft: true,
@@ -211,15 +211,15 @@ export default class Keyboard implements IKeyboard {
   };
 
   _modsMap: { [index: string]: KeyModifier } = {
-    ShiftLeft: 'Shift',
-    ShiftRight: 'Shift',
-    AltLeft: 'Escape',
-    AltRight: 'Escape',
-    MetaLeft: 'Meta',
-    MetaRight: 'Meta',
-    ControlLeft: 'Control',
-    ControlRight: 'Control',
-    CapsLock: '',
+    ShiftLeft: "Shift",
+    ShiftRight: "Shift",
+    AltLeft: "Escape",
+    AltRight: "Escape",
+    MetaLeft: "Meta",
+    MetaRight: "Meta",
+    ControlLeft: "Control",
+    ControlRight: "Control",
+    CapsLock: "",
   };
 
   _downMap: { [index: string]: KeyInfoType } = {};
@@ -237,112 +237,112 @@ export default class Keyboard implements IKeyboard {
   // custom shortcuts tracker
   _down: Set<string> = new Set();
 
-  readonly caret: HTMLDivElement = document.createElement('div');
+  readonly caret: HTMLDivElement = document.createElement("div");
 
   constructor(terminal: any, element: HTMLDivElement | null) {
     this._t = terminal;
-    this.element = element || document.createElement('div')
+    this.element = element || document.createElement("div");
 
     let input = this.element;
 
-    this.caret.innerHTML = '&#8288;';
+    this.caret.innerHTML = "&#8288;";
 
-    var el = document.getElementById("hterm:row-nodes")
+    var el = document.getElementById("hterm:row-nodes");
 
     el?.append(this.caret);
 
     this.caret.style.position = "absolute";
-    this.caret.style.zIndex = '1000';
+    this.caret.style.zIndex = "1000";
 
-    input.addEventListener('focus', this._onFocus);
-    input.addEventListener('blur', this._onBlur);
+    input.addEventListener("focus", this._onFocus);
+    input.addEventListener("blur", this._onBlur);
 
-    input.setAttribute('autocomplete', 'off');
-    input.setAttribute('spellcheck', 'false');
-    input.setAttribute('autocorrect', 'off');
-    input.setAttribute('autocapitalize', 'none');
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("spellcheck", "false");
+    input.setAttribute("autocorrect", "off");
+    input.setAttribute("autocapitalize", "none");
     // input.setAttribute('autofocus', 'true');
 
-    input.setAttribute('contenteditable', 'plaintext-only');
+    input.setAttribute("contenteditable", "plaintext-only");
 
     // keep one space, so delete always repeats on software kb
     // input.value = ' ';
 
-    input.addEventListener('keydown', this._onKeyDown);
-    input.addEventListener('keyup', this._onKeyUp);
+    input.addEventListener("keydown", this._onKeyDown);
+    input.addEventListener("keyup", this._onKeyUp);
 
-    window.addEventListener('keydown', this._onKeyDown);
-    window.addEventListener('keyup', this._onKeyUp);
-
-    // @ts-ignore
-    input.addEventListener('compositionstart', this._onIME);
-    // @ts-ignore
-    input.addEventListener('compositionupdate', this._onIME);
-    // @ts-ignore
-    input.addEventListener('compositionend', this._onIME);
+    window.addEventListener("keydown", this._onKeyDown);
+    window.addEventListener("keyup", this._onKeyUp);
 
     // @ts-ignore
-    input.addEventListener('beforeinput', this._onBeforeInput);
+    input.addEventListener("compositionstart", this._onIME);
     // @ts-ignore
-    input.addEventListener('input', this._onInput);
+    input.addEventListener("compositionupdate", this._onIME);
+    // @ts-ignore
+    input.addEventListener("compositionend", this._onIME);
+
+    // @ts-ignore
+    input.addEventListener("beforeinput", this._onBeforeInput);
+    // @ts-ignore
+    input.addEventListener("input", this._onInput);
 
     this._updateRemappingFlags();
   }
 
   _updateRemappingFlags() {
     this._capsLockRemapped =
-      this._modsMap['CapsLock'] != null ||
+      this._modsMap["CapsLock"] != null ||
       this._downMap[_capsLockID] != null ||
       this._upMap[_capsLockID] != null;
     this._shiftRemapped =
-      (this._modsMap['ShiftLeft'] != null &&
-        this._modsMap['ShiftLeft'] !== 'Shift') ||
-      (this._modsMap['ShiftRight'] != null &&
-        this._modsMap['ShiftRight'] !== 'Shift');
+      (this._modsMap["ShiftLeft"] != null &&
+        this._modsMap["ShiftLeft"] !== "Shift") ||
+      (this._modsMap["ShiftRight"] != null &&
+        this._modsMap["ShiftRight"] !== "Shift");
   }
 
   _updateUIKitModsIfNeeded = (e: KeyboardEvent) => {
     let code = e.code;
     if (this._capsLockRemapped) {
       let mods: number;
-      if (e.type == 'keyup' && code == 'CapsLock') {
+      if (e.type == "keyup" && code == "CapsLock") {
         mods = 0;
       } else {
         mods = toUIKitFlags(e);
       }
-      op('mods', { mods: mods });
+      op("mods", { mods: mods });
     }
 
-    if (code == 'AltLeft' || code == 'AltRight') {
+    if (code == "AltLeft" || code == "AltRight") {
       if (this._ignoreAccents[code]) {
-        if (e.type == 'keydown') {
-          op('guard-ime-on', {});
+        if (e.type == "keydown") {
+          op("guard-ime-on", {});
         } else {
-          op('guard-ime-off', {});
+          op("guard-ime-off", {});
         }
         _blockEvent(e);
       }
     }
   };
 
-  _mod(mod: KeyModifier): 'Alt' | 'Meta' | 'Control' | 'Shift' | null {
+  _mod(mod: KeyModifier): "Alt" | "Meta" | "Control" | "Shift" | null {
     switch (mod) {
-      case 'Escape':
-        this._altSendsWhat = 'escape';
-        return 'Alt';
-      case '8-bit':
-        this._altSendsWhat = '8-bit';
-        return 'Alt';
-      case 'Shift':
-        return 'Shift';
-      case 'Control':
-        return 'Control';
-      case 'Meta':
+      case "Escape":
+        this._altSendsWhat = "escape";
+        return "Alt";
+      case "8-bit":
+        this._altSendsWhat = "8-bit";
+        return "Alt";
+      case "Shift":
+        return "Shift";
+      case "Control":
+        return "Control";
+      case "Meta":
         this._metaSendsEscape = false;
-        return 'Meta';
-      case 'Meta-Escape':
+        return "Meta";
+      case "Meta-Escape":
         this._metaSendsEscape = true;
-        return 'Meta';
+        return "Meta";
       default:
         return null;
     }
@@ -350,16 +350,16 @@ export default class Keyboard implements IKeyboard {
 
   _downKeysIds = () => {
     let res = Array.from(this._down);
-    if (this._mods.Meta.has('tb-meta') && res.indexOf(_leftCommand) == -1) {
+    if (this._mods.Meta.has("tb-meta") && res.indexOf(_leftCommand) == -1) {
       res.push(_leftCommand);
     }
-    if (this._mods.Control.has('tb-ctrl') && res.indexOf(_leftControl) == -1) {
+    if (this._mods.Control.has("tb-ctrl") && res.indexOf(_leftControl) == -1) {
       res.push(_leftControl);
     }
-    if (this._mods.Alt.has('tb-alt') && res.indexOf(_leftOption) == -1) {
+    if (this._mods.Alt.has("tb-alt") && res.indexOf(_leftOption) == -1) {
       res.push(_leftOption);
     }
-    if (this._mods.Shift.has('tb-shift') && res.indexOf(_leftShift) == -1) {
+    if (this._mods.Shift.has("tb-shift") && res.indexOf(_leftShift) == -1) {
       res.push(_leftShift);
     }
     return res;
@@ -425,13 +425,13 @@ export default class Keyboard implements IKeyboard {
   };
 
   _onBeforeInput = (e: InputEvent) => {
-    if (this._lang === 'dictation') {
-      this._moveCaret(e.data || '')
+    if (this._lang === "dictation") {
+      this._moveCaret(e.data || "");
       // op('voice', { data: e.data || '' });
       return;
     }
 
-    if (e.inputType === 'insertText') {
+    if (e.inputType === "insertText") {
       this._output(e.data);
       if (this._langWithDeletes && e.data) {
         // this.element.value = e.data;
@@ -441,7 +441,7 @@ export default class Keyboard implements IKeyboard {
       }
     }
 
-    if (e.inputType === 'deleteContentBackward') {
+    if (e.inputType === "deleteContentBackward") {
       this._output(DEL);
     }
 
@@ -473,8 +473,8 @@ export default class Keyboard implements IKeyboard {
   _handleKeyDown = (keyCode: number, e: KeyboardEvent | null) => {
     let keyInfo = {
       keyCode,
-      key: '',
-      code: 'Unidentified',
+      key: "",
+      code: "Unidentified",
     };
 
     if (e) {
@@ -500,23 +500,23 @@ export default class Keyboard implements IKeyboard {
       { key, code, keyCode, alt, ctrl, meta, shift },
       this._keyMap,
       this._isHKB,
-      e,
+      e
     );
 
     let keyDef = keyMap.getKeyDef(keyDown.keyCode);
     var resolvedActionType = null;
 
     function getAction(
-      name: 'normal' | 'ctrl' | 'alt' | 'meta',
+      name: "normal" | "ctrl" | "alt" | "meta"
     ): KeyActionType {
       resolvedActionType = name;
       var action = keyDef[name];
-      if (typeof action == 'function') {
+      if (typeof action == "function") {
         action = action.call(keyMap, keyDown, keyDef);
       }
 
-      if (action === DEFAULT && name !== 'normal') {
-        action = getAction('normal');
+      if (action === DEFAULT && name !== "normal") {
+        action = getAction("normal");
       }
 
       return action;
@@ -525,16 +525,16 @@ export default class Keyboard implements IKeyboard {
     let action: KeyActionType;
 
     if (ctrl) {
-      action = getAction('ctrl');
+      action = getAction("ctrl");
     } else if (alt) {
-      action = getAction('alt');
+      action = getAction("alt");
     } else if (meta) {
-      action = getAction('meta');
+      action = getAction("meta");
     } else {
-      action = getAction('normal');
+      action = getAction("normal");
     }
 
-    if (this._langWithDeletes && keyDef.keyCap === '[Backspace]') {
+    if (this._langWithDeletes && keyDef.keyCap === "[Backspace]") {
       return;
     }
 
@@ -592,7 +592,7 @@ export default class Keyboard implements IKeyboard {
     if (action === STRIP) {
       alt = ctrl = false;
       action = keyDef.normal;
-      if (typeof action == 'function') {
+      if (typeof action == "function") {
         action = action.call(keyMap, keyDown, keyDef);
       }
 
@@ -607,18 +607,18 @@ export default class Keyboard implements IKeyboard {
       return;
     }
 
-    if (action !== DEFAULT && typeof action !== 'string') {
-      console.log('Invalid action: ' + JSON.stringify(action));
+    if (action !== DEFAULT && typeof action !== "string") {
+      console.log("Invalid action: " + JSON.stringify(action));
       return;
     }
 
     // Strip the modifier that is associated with the action, since we assume that
     // modifier has already been accounted for in the action.
-    if (resolvedActionType === 'ctrl') {
+    if (resolvedActionType === "ctrl") {
       ctrl = false;
-    } else if (resolvedActionType === 'alt') {
+    } else if (resolvedActionType === "alt") {
       alt = false;
-    } else if (resolvedActionType === 'meta') {
+    } else if (resolvedActionType === "meta") {
       meta = false;
     }
 
@@ -626,7 +626,7 @@ export default class Keyboard implements IKeyboard {
 
     if (
       (alt || ctrl || shift || meta) &&
-      typeof action === 'string' &&
+      typeof action === "string" &&
       action.substr(0, 2) === CSI
     ) {
       // The action is an escape sequence that and it was triggered in the
@@ -639,11 +639,11 @@ export default class Keyboard implements IKeyboard {
       if (alt) imod += 2;
       if (ctrl) imod += 4;
       if (meta) imod += 8;
-      let mod = ';' + imod;
+      let mod = ";" + imod;
 
       if (action.length == 3) {
         // Some of the CSI sequences have zero parameters unless modified.
-        action = CSI + '1' + mod + action.substr(2, 1);
+        action = CSI + "1" + mod + action.substr(2, 1);
       } else {
         // Others always have at least one parameter.
         action =
@@ -666,7 +666,7 @@ export default class Keyboard implements IKeyboard {
 
       let actionStr = action.toString();
 
-      if (alt && this._altSendsWhat == '8-bit' && actionStr.length == 1) {
+      if (alt && this._altSendsWhat == "8-bit" && actionStr.length == 1) {
         let code = actionStr.charCodeAt(0) + 128;
         action = String.fromCharCode(code);
       }
@@ -675,17 +675,17 @@ export default class Keyboard implements IKeyboard {
       // string.  Otherwise, every overridden alt/meta action would have to
       // check alt/metaSendsEscape.
       if (
-        (alt && this._altSendsWhat == 'escape') ||
+        (alt && this._altSendsWhat == "escape") ||
         (meta && this._metaSendsEscape)
       ) {
         action = ESC + actionStr;
       }
     }
 
-    if (typeof action == 'string') {
+    if (typeof action == "string") {
       this._output(action);
     } else {
-      console.warn('action is not a string', action);
+      console.warn("action is not a string", action);
     }
   };
 
@@ -727,10 +727,10 @@ export default class Keyboard implements IKeyboard {
     // @ts-ignore
     var length = lib.wc.strWidth(data);
 
-    caret.style.bottom = 'auto';
-    caret.style.top = 'auto';
-    caret.style.left = 'auto';
-    caret.style.right = 'auto';
+    caret.style.bottom = "auto";
+    caret.style.top = "auto";
+    caret.style.left = "auto";
+    caret.style.right = "auto";
 
     if (length == 0) {
       return;
@@ -738,51 +738,47 @@ export default class Keyboard implements IKeyboard {
 
     if (length >= screenCols) {
       // We are wider than the screen
-      caret.style.left = '0px';
-      caret.style.right = '0px';
+      caret.style.left = "0px";
+      caret.style.right = "0px";
       if (row < screenRows * 0.8) {
-        caret.style.top =
-          `calc(var(--hterm-charsize-height) * ${row + 1})`;
+        caret.style.top = `calc(var(--hterm-charsize-height) * ${row + 1})`;
       } else {
-        caret.style.top =
-          `calc(var(--hterm-charsize-height) * ${row - Math.floor(length / (screenCols + 1)) - 1})`;
+        caret.style.top = `calc(var(--hterm-charsize-height) * ${
+          row - Math.floor(length / (screenCols + 1)) - 1
+        })`;
       }
     } else if (col + length <= screenCols) {
       // we are inlined
-      caret.style.left =
-        `calc(var(--hterm-charsize-width) * ${col})`;
-      caret.style.top =
-        `calc(var(--hterm-charsize-height) * ${row})`;
-      caret.style.right = 'auto';
+      caret.style.left = `calc(var(--hterm-charsize-width) * ${col})`;
+      caret.style.top = `calc(var(--hterm-charsize-height) * ${row})`;
+      caret.style.right = "auto";
     } else if (row == 0) {
       // we are at the end of line but need more space at the bottom
-      caret.style.top =
-        `calc(var(--hterm-charsize-height) * ${row + 1})`;
-      caret.style.left = 'auto';
-      caret.style.right = '0px';
+      caret.style.top = `calc(var(--hterm-charsize-height) * ${row + 1})`;
+      caret.style.left = "auto";
+      caret.style.right = "0px";
     } else {
       // we are at the end of line but need more space at the top
-      caret.style.top =
-        `calc(var(--hterm-charsize-height) * ${row - 1}`;
-      caret.style.left = 'auto';
-      caret.style.right = '0px';
+      caret.style.top = `calc(var(--hterm-charsize-height) * ${row - 1}`;
+      caret.style.left = "auto";
+      caret.style.right = "0px";
     }
   }
 
   _onIME = (e: CompositionEvent) => {
     let type = e.type;
-    let data = e.data || '';
-    op('ime', { type, data });
+    let data = e.data || "";
+    op("ime", { type, data });
 
     this._moveCaret(data);
 
-    if (type == 'compositionend') {
+    if (type == "compositionend") {
       this._output(data);
     }
   };
 
   _handleCapsLockDown(down: boolean) {
-    let mod = this._modsMap['CapsLock'];
+    let mod = this._modsMap["CapsLock"];
 
     if (down) {
       this._down.add(_capsLockID);
@@ -809,22 +805,22 @@ export default class Keyboard implements IKeyboard {
 
   // Keyboard language change
   _handleLang(langAndKB: string) {
-    let parts = langAndKB.split(':');
+    let parts = langAndKB.split(":");
     this._lang = parts[0];
-    this._isHKB = parts[1] === 'hw';
+    this._isHKB = parts[1] === "hw";
 
-    this._langWithDeletes = this._lang === 'ko-KR';
+    this._langWithDeletes = this._lang === "ko-KR";
     this._stateReset(this.hasSelection);
-    if (this._lang !== 'dictation') {
-      this._moveCaret('');
+    if (this._lang !== "dictation") {
+      this._moveCaret("");
     }
   }
 
   _output = (data: string | null) => {
     this._up.clear();
-    this.caret.innerHTML = '&#8288;';
+    this.caret.innerHTML = "&#8288;";
     if (data) {
-      op('out', { data });
+      op("out", { data });
     }
   };
 
@@ -837,7 +833,7 @@ export default class Keyboard implements IKeyboard {
       Meta: new Set(),
       Control: new Set(),
     };
-    this.caret.innerHTML = '&#8288;';
+    this.caret.innerHTML = "&#8288;";
     this.hasSelection = hasSelection;
   };
 
@@ -871,7 +867,7 @@ export default class Keyboard implements IKeyboard {
       this._upMap[code.id] = up;
     }
 
-    if (code.code === 'AltRight' || code.code === 'AltLeft') {
+    if (code.code === "AltRight" || code.code === "AltLeft") {
       this._ignoreAccents[code.code] =
         key.ignoreAccents && (!!mod || !!up || !!down);
     }
@@ -946,9 +942,9 @@ export default class Keyboard implements IKeyboard {
     }
     let code = this._keyMap.keyCode(input);
     if (code) {
-      res.push(code + ':0');
+      res.push(code + ":0");
     } else {
-      res.push('0:0-' + input);
+      res.push("0:0-" + input);
     }
     return res;
   }
@@ -956,27 +952,27 @@ export default class Keyboard implements IKeyboard {
   _onToolbarMods = (val: number) => {
     let flags = UIKitFlagsToObject(val);
     if (flags.alt) {
-      this._mods.Alt.add('tb-alt');
+      this._mods.Alt.add("tb-alt");
     } else {
-      this._mods.Alt.delete('tb-alt');
+      this._mods.Alt.delete("tb-alt");
     }
 
     if (flags.ctrl) {
-      this._mods.Control.add('tb-ctrl');
+      this._mods.Control.add("tb-ctrl");
     } else {
-      this._mods.Control.delete('tb-ctrl');
+      this._mods.Control.delete("tb-ctrl");
     }
 
     if (flags.shift) {
-      this._mods.Shift.add('tb-shift');
+      this._mods.Shift.add("tb-shift");
     } else {
-      this._mods.Shift.delete('tb-shift');
+      this._mods.Shift.delete("tb-shift");
     }
 
     if (flags.meta) {
-      this._mods.Meta.add('tb-meta');
+      this._mods.Meta.add("tb-meta");
     } else {
-      this._mods.Meta.delete('tb-meta');
+      this._mods.Meta.delete("tb-meta");
     }
   };
 
@@ -992,31 +988,31 @@ export default class Keyboard implements IKeyboard {
     let modFlags = parseInt(parts[0], 10);
     let mods = UIKitFlagsToObject(modFlags);
     if (mods.shift) {
-      this._mods.Shift.add('tb-shift');
+      this._mods.Shift.add("tb-shift");
     }
     if (mods.ctrl) {
-      this._mods.Control.add('tb-ctrl');
+      this._mods.Control.add("tb-ctrl");
     }
     if (mods.alt) {
-      this._mods.Alt.add('tb-alt');
+      this._mods.Alt.add("tb-alt");
     }
     if (mods.meta) {
-      this._mods.Meta.add('tb-meta');
+      this._mods.Meta.add("tb-meta");
     }
 
     let keyCode = parseInt(parts[1], 10);
     let key =
-      parts[3] == '' ? ':' : parts[3] || this._keyMap.key(keyCode) || '';
+      parts[3] == "" ? ":" : parts[3] || this._keyMap.key(keyCode) || "";
 
     let keyInfo: KeyInfoType = {
       keyCode,
       key,
-      code: '',
-      src: 'toolbar',
+      code: "",
+      src: "toolbar",
     };
     if (!skipBinding && modFlags > 0) {
       let keyId =
-        keyInfo.keyCode + ':' + parts[2] + (keyCode == 0 ? ':' + key : '');
+        keyInfo.keyCode + ":" + parts[2] + (keyCode == 0 ? ":" + key : "");
       this._down.add(keyId);
       let binding = this._bindings.match(this._downKeysIds());
       this._down.delete(keyId);
@@ -1033,44 +1029,44 @@ export default class Keyboard implements IKeyboard {
 
   onKB = (cmd: string, arg: any) => {
     switch (cmd) {
-      case 'mods-down':
+      case "mods-down":
         this._handleCapsLockDown(true);
         break;
-      case 'mods-up':
+      case "mods-up":
         this._handleCapsLockDown(false);
         break;
-      case 'guard-up':
+      case "guard-up":
         this._handleGuard(true, arg);
         break;
-      case 'guard-down':
+      case "guard-down":
         this._handleGuard(false, arg);
         break;
-      case 'selection':
+      case "selection":
         this.hasSelection = arg;
         break;
-      case 'lang':
+      case "lang":
         this._handleLang(arg);
         break;
-      case 'toolbar-mods':
+      case "toolbar-mods":
         this._onToolbarMods(arg);
         break;
-      case 'toolbar-press':
+      case "toolbar-press":
         this._execPress(arg, null, false);
         break;
-      case 'press':
+      case "press":
         this._execPress(arg, null, true);
         break;
-      case 'state-reset':
+      case "state-reset":
         this._stateReset(arg);
         break;
-      case 'focus':
+      case "focus":
         this.focus(arg);
         break;
-      case 'hex':
+      case "hex":
         this._output(hex_to_ascii(arg));
         this._removeAccents = true;
         break;
-      case 'config':
+      case "config":
         this._config(arg);
         break;
     }
@@ -1078,13 +1074,13 @@ export default class Keyboard implements IKeyboard {
 
   _execBinding(action: BindingAction, e: KeyboardEvent | null) {
     switch (action.type) {
-      case 'command':
-        op('command', { command: action.value });
+      case "command":
+        op("command", { command: action.value });
         break;
-      case 'press':
+      case "press":
         this._execPress(`${action.mods}:${action.key.id}`, e, true);
         break;
-      case 'hex':
+      case "hex":
         this._output(hex_to_ascii(action.value));
         this._removeAccents = true;
         break;

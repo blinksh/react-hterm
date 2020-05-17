@@ -1,33 +1,33 @@
 export type BindingAction =
   | {
-      type: 'hex',
-      value: string,
+      type: "hex";
+      value: string;
     }
   | {
-      type: 'press',
+      type: "press";
       key: {
-        keyCode: number,
-        key: string,
-        code: string,
-        id: string,
-      },
-      mods: number,
+        keyCode: number;
+        key: string;
+        code: string;
+        id: string;
+      };
+      mods: number;
     }
   | {
-      type: 'command',
-      value: string,
+      type: "command";
+      value: string;
     }
   | {
-      type: 'none',
+      type: "none";
     };
 
 export type KeyBinding = {
-  keys: Array<string>,
-  shiftLoc: number,
-  controlLoc: number,
-  optionLoc: number,
-  commandLoc: number,
-  action: BindingAction,
+  keys: Array<string>;
+  shiftLoc: number;
+  controlLoc: number;
+  optionLoc: number;
+  commandLoc: number;
+  action: BindingAction;
 };
 
 export default class Bindings {
@@ -38,7 +38,7 @@ export default class Bindings {
   }
 
   match(keyIds: Array<string>): BindingAction | null {
-    let keysPath = keyIds.sort().join(':');
+    let keysPath = keyIds.sort().join(":");
     return this._map[keysPath];
   }
 
@@ -50,74 +50,74 @@ export default class Bindings {
     let fns = [
       {
         keyCode: 121,
-        key: 'F10',
-        code: 'F10',
-        id: '121:0',
+        key: "F10",
+        code: "F10",
+        id: "121:0",
       },
       {
         keyCode: 112,
-        key: 'F1',
-        code: 'F1',
-        id: '112:0',
+        key: "F1",
+        code: "F1",
+        id: "112:0",
       },
       {
         keyCode: 113,
-        key: 'F2',
-        code: 'F2',
-        id: '113:0',
+        key: "F2",
+        code: "F2",
+        id: "113:0",
       },
       {
         keyCode: 114,
-        key: 'F3',
-        code: 'F3',
-        id: '114:0',
+        key: "F3",
+        code: "F3",
+        id: "114:0",
       },
       {
         keyCode: 115,
-        key: 'F4',
-        code: 'F4',
-        id: '115:0',
+        key: "F4",
+        code: "F4",
+        id: "115:0",
       },
       {
         keyCode: 116,
-        key: 'F5',
-        code: 'F5',
-        id: '116:0',
+        key: "F5",
+        code: "F5",
+        id: "116:0",
       },
       {
         keyCode: 117,
-        key: 'F6',
-        code: 'F6',
-        id: '117:0',
+        key: "F6",
+        code: "F6",
+        id: "117:0",
       },
       {
         keyCode: 118,
-        key: 'F7',
-        code: 'F7',
-        id: '118:0',
+        key: "F7",
+        code: "F7",
+        id: "118:0",
       },
       {
         keyCode: 119,
-        key: 'F8',
-        code: 'F8',
-        id: '119:0',
+        key: "F8",
+        code: "F8",
+        id: "119:0",
       },
       {
         keyCode: 120,
-        key: 'F9',
-        code: 'F9',
-        id: '120:0',
+        key: "F9",
+        code: "F9",
+        id: "120:0",
       },
     ];
 
     let keys = binding.keys.slice();
     for (var i = 0; i < 10; i++) {
-      let numId = i + 48 + ':0';
+      let numId = i + 48 + ":0";
       let fn = fns[i];
       binding.keys = keys.slice();
       binding.keys.push(numId);
       binding.action = {
-        type: 'press',
+        type: "press",
         key: fn,
         mods: 0,
       };
@@ -132,33 +132,33 @@ export default class Bindings {
     let cursor = [
       {
         keyCode: 36,
-        key: 'HOME',
-        code: 'HOME',
-        id: '36:0',
+        key: "HOME",
+        code: "HOME",
+        id: "36:0",
       },
       {
         keyCode: 33,
-        key: 'PGUP',
-        code: 'PGUP',
-        id: '33:0',
+        key: "PGUP",
+        code: "PGUP",
+        id: "33:0",
       },
       {
         keyCode: 35,
-        key: 'END',
-        code: 'END',
-        id: '35:0',
+        key: "END",
+        code: "END",
+        id: "35:0",
       },
       {
         keyCode: 34,
-        key: 'PGDOWN',
-        code: 'PGDOWN',
-        id: '34:0',
+        key: "PGDOWN",
+        code: "PGDOWN",
+        id: "34:0",
       },
     ];
-    let left = '37:0';
-    let up = '38:0';
-    let right = '39:0';
-    let down = '40:0';
+    let left = "37:0";
+    let up = "38:0";
+    let right = "39:0";
+    let down = "40:0";
     let arrows = [left, up, right, down];
     let keys = binding.keys.slice();
     for (var i = 0; i < arrows.length; i++) {
@@ -167,7 +167,7 @@ export default class Bindings {
       binding.keys = keys.slice();
       binding.keys.push(arrow);
       binding.action = {
-        type: 'press',
+        type: "press",
         key: cur,
         mods: 0,
       };
@@ -176,7 +176,7 @@ export default class Bindings {
   };
 
   expandBinding = (binding: KeyBinding) => {
-    var keys = binding.keys.map(k => k.split('-')[0]);
+    var keys = binding.keys.map((k) => k.split("-")[0]);
     if (keys.length == 0) {
       return;
     }
@@ -184,23 +184,24 @@ export default class Bindings {
     var i = 0;
 
     const shift = {
-      idLeft: '16:1',
-      idRight: '16:2',
+      idLeft: "16:1",
+      idRight: "16:2",
       loc: binding.shiftLoc,
     };
     const control = {
-      idLeft: '17:1',
-      idRight: '17:2',
+      idLeft: "17:1",
+      idRight: "17:2",
       loc: binding.controlLoc,
     };
     const option = {
-      idLeft: '18:1',
-      idRight: '18:2',
+      idLeft: "18:1",
+      idRight: "18:2",
       loc: binding.optionLoc,
     };
     const command = {
-      idLeft: '91:1',
-      idRight: '93:0',
+      idLeft: "91:1",
+      // idRight: '93:0',
+      idRight: "93:2", // they fixed location?
       loc: binding.commandLoc,
     };
 
@@ -233,7 +234,7 @@ export default class Bindings {
     }
 
     for (let row of res) {
-      let r = row.sort().join(':');
+      let r = row.sort().join(":");
       this._map[r] = binding.action;
     }
   };
