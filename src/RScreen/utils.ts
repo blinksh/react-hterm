@@ -1,7 +1,7 @@
 import { RRowType, RNodeType } from './model';
 import { lib } from '../hterm_all';
 
-var __nodeKey = 0;
+let __nodeKey = 0;
 
 export function touch(n: RRowType | RNodeType) {
   n.v = (n.v + 1) % 1000000;
@@ -24,10 +24,10 @@ export function nodeSubstr(
 }
 
 export function rowWidth(row: RRowType): number {
-  var result = 0;
+  let result = 0;
 
   const nodes = row.nodes;
-  var len = nodes.length;
+  const len = nodes.length;
 
   for (var i = 0; i < len; i++) {
     result += nodes[i].wcw;
@@ -37,10 +37,11 @@ export function rowWidth(row: RRowType): number {
 }
 
 export function rowText(row: RRowType): string {
-  let text = '';
+  let result = '';
+
   for (var i = 0, len = row.nodes.length; i < len; i++) {
-    text += row.nodes[i].txt;
+    result += row.nodes[i].txt;
   }
 
-  return text;
+  return result;
 }
