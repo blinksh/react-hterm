@@ -1,5 +1,5 @@
-import { RRowType, RNodeType, RAttributesType } from './model';
-import { touch, genKey, nodeSubstr, rowWidth, rowText } from './utils';
+import { RRowType, RNodeType, RAttributesType } from "./model";
+import { touch, genKey, nodeSubstr, rowWidth, rowText } from "./utils";
 import {
   createNode,
   createDefaultNode,
@@ -7,14 +7,14 @@ import {
   setNodeAttributedText,
   nodeMatchesAttrs,
   createAttributedNode,
-} from './TextAttributes';
+} from "./TextAttributes";
 
-import { hterm, lib } from '../hterm_all.js';
+import { hterm, lib } from "../hterm_all.js";
 
 function __insertNode(
   node: RNodeType,
   offset: number,
-  separator: RNodeType,
+  separator: RNodeType
 ): RNodeType[] {
   var afterNode: RNodeType = {
     key: genKey(),
@@ -37,7 +37,7 @@ function __insertNode(
 
   if (afterNode.txt) {
     if (node.attrs.wcNode && afterNode.txt === txt) {
-      nodes.push(createNode(' ', 1));
+      nodes.push(createNode(" ", 1));
       nodes.push(separator);
     } else {
       nodes.push(separator);
@@ -50,21 +50,21 @@ function __insertNode(
   return nodes;
 }
 
-hterm.Screen.prototype.invalidateCursorPosition = function() {
+hterm.Screen.prototype.invalidateCursorPosition = function () {
   this.cursorPosition.move(0, 0);
   this.cursorRowIdx_ = 0;
   this.cursorNodeIdx_ = 0;
   this.cursorOffset_ = 0;
 };
 
-hterm.Screen.prototype.clearCursorRow = function() {
+hterm.Screen.prototype.clearCursorRow = function () {
   this.cursorOffset_ = 0;
   this.cursorPosition.column = 0;
   this.cursorPosition.overflow = false;
 
   var text;
   if (this.textAttributes.isDefault()) {
-    text = '';
+    text = "";
   } else {
     text = lib.f.getWhitespace(this.columnCount_);
   }
@@ -78,7 +78,7 @@ hterm.Screen.prototype.clearCursorRow = function() {
   var node = createAttributedNode(
     this.textAttributes.attrs(),
     text,
-    text.length,
+    text.length
   );
   var row = this.rowsArray[this.cursorRowIdx_];
   row.nodes = [node];
@@ -91,36 +91,36 @@ hterm.Screen.prototype.clearCursorRow = function() {
   this.textAttributes.syncColors();
 };
 
-hterm.Screen.prototype.commitLineOverflow = function() {
+hterm.Screen.prototype.commitLineOverflow = function () {
   var row = this.rowsArray[this.cursorRowIdx_];
   row.o = true;
   touch(row);
 };
 
-hterm.Screen.prototype.setCursorPosition = function(
+hterm.Screen.prototype.setCursorPosition = function (
   row: number,
-  column: number,
+  column: number
 ) {
   if (!this.rowsArray.length) {
-    console.warn('Attempt to set cursor position on empty screen.');
+    console.warn("Attempt to set cursor position on empty screen.");
     return;
   }
 
   if (row >= this.rowsArray.length) {
-    console.error('Row out of bounds: ' + row);
+    console.error("Row out of bounds: " + row);
     row = this.rowsArray.length - 1;
   }
 
   if (row < 0) {
-    console.error('Row out of bounds: ' + row);
+    console.error("Row out of bounds: " + row);
     row = 0;
   }
 
   if (column >= this.columnCount_) {
-    console.error('Column out of bounds: ' + column);
+    console.error("Column out of bounds: " + column);
     column = this.columnCount_ - 1;
   } else if (column < 0) {
-    console.error('Column out of bounds: ' + column);
+    console.error("Column out of bounds: " + column);
     column = 0;
   }
 
@@ -131,7 +131,7 @@ hterm.Screen.prototype.setCursorPosition = function(
   var node = rowNode.nodes[0];
 
   if (!node) {
-    node = createNode('', 0);
+    node = createNode("", 0);
     rowNode.nodes = [node];
     touch(rowNode);
   }
@@ -169,27 +169,25 @@ hterm.Screen.prototype.setCursorPosition = function(
   }
 };
 
-hterm.Screen.prototype.syncSelectionCaret = function(selection: any) {
+hterm.Screen.prototype.syncSelectionCaret = function (selection: any) {
   let caret = window._kb.caret;
   if (caret) {
-    // caret.innerText = ' ';
+    if (
+      selection.isCollapsed &&
+      selection.focusNode === caret &&
+      selection.focusOffset === 0
+    ) {
+      return;
+    }
     selection.collapse(caret, 0);
-    // caret.innerText = '';
   }
-  // TODO:
-  //try {
-  //selection.collapse(this.cursorNode_, this.cursorOffset_);
-  //} catch (firefoxIgnoredException) {
-  //// FF can throw an exception if the range is off, rather than just not
-  //// performing the collapse.
-  //}
 };
 
-hterm.Screen.prototype.cursorRow = function(): RRowType {
+hterm.Screen.prototype.cursorRow = function (): RRowType {
   return this.rowsArray[this.cursorRowIdx_];
 };
 
-hterm.Screen.prototype.maybeClipCurrentRow = function() {
+hterm.Screen.prototype.maybeClipCurrentRow = function () {
   var cursorRow = this.cursorRow();
   var width = rowWidth(cursorRow);
 
@@ -259,10 +257,10 @@ function __flattenNodes(row: RRowType, startNodeIdx: number) {
   }
 }
 
-hterm.Screen.prototype.overwriteNode = function(
+hterm.Screen.prototype.overwriteNode = function (
   str: string,
   wcwidth: number,
-  attrs: RAttributesType,
+  attrs: RAttributesType
 ): number {
   var cursorRow = this.rowsArray[this.cursorRowIdx_];
   var cursorNode = cursorRow.nodes[this.cursorNodeIdx_];
@@ -307,7 +305,7 @@ hterm.Screen.prototype.overwriteNode = function(
       setNodeText(
         cursorNode,
         (cursorNodeText += ws),
-        cursorNode.wcw - reverseOffset,
+        cursorNode.wcw - reverseOffset
       );
     } else {
       // Worst case, we have to create a new node to hold the whitespace.
@@ -344,7 +342,7 @@ hterm.Screen.prototype.overwriteNode = function(
         setNodeAttributedText(
           attrs,
           cursorNode,
-          str + nodeSubstr(cursorNode, wcwidth),
+          str + nodeSubstr(cursorNode, wcwidth)
         );
         wcwidthLeft = 0;
       }
@@ -354,7 +352,7 @@ hterm.Screen.prototype.overwriteNode = function(
         setNodeAttributedText(
           attrs,
           cursorNode,
-          nodeSubstr(cursorNode, 0, offset) + str,
+          nodeSubstr(cursorNode, 0, offset) + str
         );
         wcwidthLeft = wcdiff;
       } else {
@@ -424,7 +422,7 @@ hterm.Screen.prototype.overwriteNode = function(
         setNodeAttributedText(
           attrs,
           nextSibling,
-          str + nodeSubstr(nextSibling, wcwidth),
+          str + nodeSubstr(nextSibling, wcwidth)
         );
         wcwidthLeft = 0;
       }
@@ -473,7 +471,7 @@ hterm.Screen.prototype.overwriteNode = function(
       1,
       nodes[0],
       nodes[1],
-      nodes[2],
+      nodes[2]
     );
     this.cursorNodeIdx_++;
   }
@@ -482,7 +480,7 @@ hterm.Screen.prototype.overwriteNode = function(
   return wcwidthLeft;
 };
 
-hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
+hterm.Screen.prototype.insertString = function (str: string, wcwidth: number) {
   var cursorRow = this.rowsArray[this.cursorRowIdx_];
   var cursorNode = cursorRow.nodes[this.cursorNodeIdx_];
 
@@ -527,7 +525,7 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
       setNodeText(
         cursorNode,
         (cursorNodeText += ws),
-        cursorNode.wcw - reverseOffset,
+        cursorNode.wcw - reverseOffset
       );
     } else {
       // Worst case, we have to create a new node to hold the whitespace.
@@ -616,7 +614,7 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
       1,
       nodes[0],
       nodes[1],
-      nodes[2],
+      nodes[2]
     );
     this.cursorNodeIdx_++;
   }
@@ -624,9 +622,9 @@ hterm.Screen.prototype.insertString = function(str: string, wcwidth: number) {
   this.cursorOffset_ = 0;
 };
 
-hterm.Screen.prototype.overwriteString = function(
+hterm.Screen.prototype.overwriteString = function (
   str: string,
-  wcwidth: number,
+  wcwidth: number
 ) {
   var maxLength = this.columnCount_ - this.cursorPosition.column;
   if (!maxLength) return [str];
@@ -648,7 +646,7 @@ hterm.Screen.prototype.overwriteString = function(
       setNodeAttributedText(
         attrs,
         cursorNode,
-        nodeSubstr(cursorNode, 0, offset) + str,
+        nodeSubstr(cursorNode, 0, offset) + str
       );
     } else {
       var s =
@@ -671,7 +669,7 @@ hterm.Screen.prototype.overwriteString = function(
   touch(cursorRowNode);
 };
 
-hterm.Screen.prototype.deleteChars = function(count: number): number {
+hterm.Screen.prototype.deleteChars = function (count: number): number {
   var cursorRowNode = this.rowsArray[this.cursorRowIdx_];
   var spliceIdx = this.cursorNodeIdx_;
   var spliceDeleteCount = 0;
@@ -703,7 +701,7 @@ hterm.Screen.prototype.deleteChars = function(count: number): number {
       if (startWidth - offset > count) {
         setNodeText(
           node,
-          nodeSubstr(node, 0, offset) + nodeSubstr(node, offset + count),
+          nodeSubstr(node, 0, offset) + nodeSubstr(node, offset + count)
         );
         return rv;
       }
@@ -733,7 +731,7 @@ hterm.Screen.prototype.deleteChars = function(count: number): number {
     setNodeText(node, nodeSubstr(node, count));
     // we didn't delete anything. replace with one char width
     if (node.attrs.wcNode && startWidth === node.wcw) {
-      var spaceNode = createNode(' ', 1);
+      var spaceNode = createNode(" ", 1);
       count -= 1;
       cursorRowNode.nodes.splice(nodeIdx, 1, spaceNode);
     }
@@ -754,7 +752,7 @@ hterm.Screen.prototype.deleteChars = function(count: number): number {
 
   len = cursorRowNode.nodes.length;
   if (len === 0) {
-    cursorRowNode.nodes = [createNode('', 0)];
+    cursorRowNode.nodes = [createNode("", 0)];
     this.cursorNodeIdx_ = 0;
     this.cursorOffset_ = 0;
     return rv;
@@ -771,7 +769,7 @@ hterm.Screen.prototype.deleteChars = function(count: number): number {
   return rv;
 };
 
-hterm.Screen.prototype.popRow = function() {
+hterm.Screen.prototype.popRow = function () {
   return this.rowsArray.pop();
 };
 
@@ -781,7 +779,7 @@ hterm.Screen.prototype.popRow = function() {
  * @param {integer} count The number of rows to remove.
  * @return {Array.<HTMLElement>} The selected rows.
  */
-hterm.Screen.prototype.popRows = function(count: number) {
+hterm.Screen.prototype.popRows = function (count: number) {
   return this.rowsArray.splice(this.rowsArray.length - count, count);
 };
 
@@ -790,11 +788,11 @@ hterm.Screen.prototype.popRows = function(count: number) {
  *
  * @param {HTMLElement} row The row to insert.
  */
-hterm.Screen.prototype.pushRow = function(row: any) {
+hterm.Screen.prototype.pushRow = function (row: any) {
   this.rowsArray[this.rowsArray.length] = row;
 };
 
-hterm.Screen.prototype.setRow = function(row: any, index: number) {
+hterm.Screen.prototype.setRow = function (row: any, index: number) {
   this.rowsArray[index] = row;
 };
 
@@ -803,13 +801,13 @@ hterm.Screen.prototype.setRow = function(row: any, index: number) {
  *
  * @param {Array.<HTMLElement>} rows The rows to insert.
  */
-hterm.Screen.prototype.pushRows = function(rows: any) {
+hterm.Screen.prototype.pushRows = function (rows: any) {
   for (var i = 0, k = this.rowsArray.length, len = rows.length; i < len; i++) {
     this.rowsArray[i + k] = rows[i];
   }
 };
 
-hterm.Screen.prototype.getLineStartRow_ = function(row: RRowType): RRowType {
+hterm.Screen.prototype.getLineStartRow_ = function (row: RRowType): RRowType {
   var rowIdx = this.rowsArray.indexOf(row);
   if (rowIdx <= 0) {
     return row;
@@ -822,8 +820,8 @@ hterm.Screen.prototype.getLineStartRow_ = function(row: RRowType): RRowType {
   return row;
 };
 
-hterm.Screen.prototype.getLineText_ = function(row: RRowType): string {
-  var result = '';
+hterm.Screen.prototype.getLineText_ = function (row: RRowType): string {
+  var result = "";
   var rowIdx = this.rowsArray.indexOf(row);
   if (rowIdx < 0) {
     return rowText(row);
@@ -840,37 +838,37 @@ hterm.Screen.prototype.getLineText_ = function(row: RRowType): string {
   return result;
 };
 
-hterm.Screen.prototype.getPositionWithOverflow_ = function(
+hterm.Screen.prototype.getPositionWithOverflow_ = function (
   row: any,
   node: any,
-  offset: any,
+  offset: any
 ) {
   return 0;
 };
 
-hterm.Screen.prototype.getPositionWithinRow_ = function(
+hterm.Screen.prototype.getPositionWithinRow_ = function (
   row: any,
   node: any,
-  offset: any,
+  offset: any
 ) {
   return 0;
 };
-hterm.Screen.prototype.getNodeAndOffsetWithOverflow_ = function(
+hterm.Screen.prototype.getNodeAndOffsetWithOverflow_ = function (
   row: any,
-  position: any,
+  position: any
 ) {
   return -1;
 };
-hterm.Screen.prototype.getNodeAndOffsetWithinRow_ = function(
+hterm.Screen.prototype.getNodeAndOffsetWithinRow_ = function (
   row: any,
-  position: any,
+  position: any
 ) {
   return null;
 };
-hterm.Screen.prototype.setRange_ = function(
+hterm.Screen.prototype.setRange_ = function (
   row: any,
   start: any,
   end: any,
-  range: any,
+  range: any
 ) {};
-hterm.Screen.prototype.expandSelection = function(selection: any) {};
+hterm.Screen.prototype.expandSelection = function (selection: any) {};
