@@ -8187,44 +8187,6 @@ hterm.ScrollPort.prototype.setRowProvider = function (rowProvider) {
 };
 
 /**
- * Inform the ScrollPort that the root DOM nodes for some or all of the visible
- * rows are no longer valid.
- *
- * Specifically, this should be called if this.rowProvider_.getRowNode() now
- * returns an entirely different node than it did before.  It does not
- * need to be called if the content of a row node is the only thing that
- * changed.
- *
- * This skips some of the overhead of a full redraw, but should not be used
- * in cases where the scrollport has been scrolled, or when the row count has
- * changed.
- */
-hterm.ScrollPort.prototype.invalidate = function () {
-  var node = this.topFold_.nextSibling;
-  while (node != this.bottomFold_) {
-    var nextSibling = node.nextSibling;
-    node.parentElement.removeChild(node);
-    node = nextSibling;
-  }
-
-  this.previousRowNodeCache_ = null;
-  var topRowIndex = this.getTopRowIndex();
-  var bottomRowIndex = this.getBottomRowIndex(topRowIndex);
-
-  this.drawVisibleRows_(topRowIndex, bottomRowIndex);
-};
-
-hterm.ScrollPort.prototype.scheduleInvalidate = function () {
-  if (this.timeouts_.invalidate) return;
-
-  var self = this;
-  this.timeouts_.invalidate = setTimeout(function () {
-    delete self.timeouts_.invalidate;
-    self.invalidate();
-  }, 0);
-};
-
-/**
  * Set the font size of the ScrollPort.
  */
 hterm.ScrollPort.prototype.setFontSize = function (px) {
@@ -8240,69 +8202,6 @@ hterm.ScrollPort.prototype.getFontSize = function () {
 };
 
 /**
- * Measure the size of a single character in pixels.
- *
- * @param {string} opt_weight The font weight to measure, or 'normal' if
- *     omitted.
- * @return {hterm.Size} A new hterm.Size object.
- */
-hterm.ScrollPort.prototype.measureCharacterSize = function (opt_weight) {
-  // Number of lines used to average the height of a single character.
-  var numberOfLines = 100;
-  // Number of chars per line used to average the width of a single character.
-  var lineLength = 100;
-
-  if (!this.ruler_) {
-    this.ruler_ = this.document_.createElement("div");
-    this.ruler_.id = "hterm:ruler-character-size";
-    this.ruler_.style.cssText =
-      "position: absolute;" +
-      "top: 0;" +
-      "left: 0;" +
-      "visibility: hidden;" +
-      "height: auto !important;" +
-      "width: auto !important;";
-
-    // We need to put the text in a span to make the size calculation
-    // work properly in Firefox
-    this.rulerSpan_ = this.document_.createElement("span");
-    this.rulerSpan_.id = "hterm:ruler-span-workaround";
-    this.rulerSpan_.innerHTML = ("X".repeat(lineLength) + "\r").repeat(
-      numberOfLines
-    );
-    this.ruler_.appendChild(this.rulerSpan_);
-
-    this.rulerBaseline_ = this.document_.createElement("span");
-    this.rulerSpan_.id = "hterm:ruler-baseline";
-    // We want to collapse it on the baseline
-    this.rulerBaseline_.style.fontSize = "0px";
-    this.rulerBaseline_.textContent = "X";
-  }
-
-  this.rulerSpan_.style.fontWeight = opt_weight || "";
-
-  this.rowNodes_.appendChild(this.ruler_);
-  var rulerSize = hterm.getClientSize(this.rulerSpan_);
-
-  var size = new hterm.Size(
-    rulerSize.width / lineLength,
-    rulerSize.height / numberOfLines
-  );
-
-  this.ruler_.appendChild(this.rulerBaseline_);
-  size.baseline = this.rulerBaseline_.offsetTop;
-  this.ruler_.removeChild(this.rulerBaseline_);
-
-  this.rowNodes_.removeChild(this.ruler_);
-
-  this.div_.ownerDocument.body.appendChild(this.svg_);
-  size.zoomFactor = this.svg_.currentScale;
-  this.div_.ownerDocument.body.removeChild(this.svg_);
-
-  return size;
-};
-
-/**
  * Synchronize the character size.
  *
  * This will re-measure the current character size and adjust the height
@@ -8312,24 +8211,6 @@ hterm.ScrollPort.prototype.syncCharacterSize = function () {
   this.characterSize = this.measureCharacterSize();
 
   this.resize();
-};
-
-/**
- * Reset dimensions and visible row count to account for a change in the
- * dimensions of the 'x-screen'.
- */
-hterm.ScrollPort.prototype.resize = function () {
-  this.currentScrollbarWidthPx =
-    hterm.getClientWidth(this.screen_) - this.screen_.clientWidth;
-
-  this.syncScrollHeight();
-  this.syncRowNodesDimensions_();
-
-  var self = this;
-  this.publish("resize", { scrollPort: this }, function () {
-    self.scrollRowToBottom(self.rowProvider_.getRowCount());
-    self.scheduleRedraw();
-  });
 };
 
 /**

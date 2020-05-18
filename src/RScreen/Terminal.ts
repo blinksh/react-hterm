@@ -408,6 +408,22 @@ hterm.Terminal.prototype.eraseToRight = function (opt_count?: number) {
   this.clearCursorOverflow();
 };
 
+/**
+ * Erase the entire display without changing the cursor position.
+ *
+ * The cursor position is unchanged.  This does not respect the scroll
+ * region.
+ *
+ * @param {hterm.Screen} opt_screen Optional screen to operate on.  Defaults
+ *     to the current screen.
+ */
+hterm.Terminal.prototype.clear = function (opt_screen: any) {
+  var screen = opt_screen || this.screen_;
+  var cursor = screen.cursorPosition.clone();
+  this.clearHome(screen);
+  screen.setCursorPosition(cursor.row, cursor.column);
+};
+
 hterm.Terminal.prototype.insertLines = function (count: number) {
   var cursorRow = this.screen_.cursorPosition.row;
 
