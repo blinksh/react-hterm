@@ -564,6 +564,19 @@ function debugPrint(screen: hterm.Screen, str: string) {
   );
 }
 
+hterm.Terminal.prototype.getRowsText = function (start: number, end: number) {
+  var ary = [];
+  for (var i = start; i < end; i++) {
+    var node = this.getRowNode(i);
+    ary.push(rowText(node));
+    if (i < end - 1 && !node.o) {
+      ary.push("\n");
+    }
+  }
+
+  return ary.join("");
+};
+
 // @ts-ignore
 hterm.Terminal.prototype.print = function (str: string, announce = true) {
   this.scheduleSyncCursorPosition_();
@@ -717,7 +730,7 @@ hterm.Terminal.prototype.realizeHeight_ = function (rowCount: number) {
         this.scrollbackRows_.length + this.screen_.rowsArray.length - 1;
       if (lastRow - this.scrollbackRows_.length == cursor.row) break;
 
-      if (this.getRowText(lastRow)) break;
+      if (rowText(this.getRowNode(lastRow))) break;
 
       this.screen_.popRow();
       deltaRows--;
