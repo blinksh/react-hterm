@@ -1,19 +1,19 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import { RRowType } from './model';
-import RRow from './RRow';
+import React from "react";
+// import ReactDOM from 'react-dom';
+import { RRowType } from "./model";
+import RRow from "./RRow";
 
 export default class RRowList extends React.Component {
   _dirty = true;
   _rows: RRowType[] = [];
-  _rowsMap: Map<number, any> = new Map();
+  _rowsMap: { [index: number]: any } = {};
 
   render() {
     const rows = this._rows;
     const len = rows.length;
     // @ts-ignore
     const elements: Element<any>[] = new Array(len);
-    const rowsMap = new Map();
+    const rowsMap: { [index: number]: any } = {};
 
     for (let i = 0; i < len; i++) {
       const row = rows[i];
@@ -21,7 +21,7 @@ export default class RRowList extends React.Component {
       const ref = React.createRef();
       // @ts-ignore
       elements[i] = React.createElement(RRow, { key, ref, row });
-      rowsMap.set(key, ref);
+      rowsMap[key] = ref;
     }
 
     this._rowsMap = rowsMap;
@@ -39,7 +39,7 @@ export default class RRowList extends React.Component {
       return;
     }
 
-    let ref = this._rowsMap.get(row.key);
+    let ref = this._rowsMap[row.key];
     if (ref && ref.current) {
       ref.current.touch();
     }
