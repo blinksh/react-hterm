@@ -239,7 +239,7 @@ hterm.ScrollPort.prototype.decorate = function () {
   // focus.
   this.scrollUpButton_ = this.document_.createElement("div");
   this.scrollUpButton_.id = "hterm:a11y:page-up";
-  this.scrollUpButton_.innerText = hterm.msg("BUTTON_PAGE_UP", [], "Page up");
+  // this.scrollUpButton_.innerText = hterm.msg("BUTTON_PAGE_UP", [], "Page up");
   this.scrollUpButton_.setAttribute("role", "button");
   this.scrollUpButton_.style.cssText = scrollButtonStyle;
   this.scrollUpButton_.style.top = -scrollButtonTotalHeight + "px";
@@ -247,11 +247,11 @@ hterm.ScrollPort.prototype.decorate = function () {
 
   this.scrollDownButton_ = this.document_.createElement("div");
   this.scrollDownButton_.id = "hterm:a11y:page-down";
-  this.scrollDownButton_.innerText = hterm.msg(
-    "BUTTON_PAGE_DOWN",
-    [],
-    "Page down"
-  );
+  // this.scrollDownButton_.innerText = hterm.msg(
+  //   "BUTTON_PAGE_DOWN",
+  //   [],
+  //   "Page down"
+  // );
   this.scrollDownButton_.setAttribute("role", "button");
   this.scrollDownButton_.style.cssText = scrollButtonStyle;
   this.scrollDownButton_.style.bottom = -scrollButtonTotalHeight + "px";
@@ -867,7 +867,7 @@ hterm.ScrollPort.prototype.measureCharacterSize = function (opt_weight: any) {
   return size;
 };
 
-hterm.ScrollPort.prototype.resize = function (force = false) {
+hterm.ScrollPort.prototype.resize = function (force: boolean = false) {
   this.currentScrollbarWidthPx =
     hterm.getClientWidth(this.screen_) - this.screen_.clientWidth;
 
@@ -904,4 +904,7 @@ hterm.ScrollPort.prototype.resize = function (force = false) {
     //self.scrollRowToBottom(self.rowProvider_.getRowCount());
     self.scheduleRedraw();
   });
+};
+
+hterm.ScrollPort.prototype.updateScrollButtonState_ = function() {
 };
