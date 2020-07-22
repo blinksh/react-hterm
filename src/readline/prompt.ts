@@ -467,6 +467,8 @@ export default class Prompt {
         this._cursor = 0;
         break;
       case 'C-l':
+        this._term.reset();
+        this._resetHistory();
         this._startRow = 0;
         break;
       case 'C-r':
