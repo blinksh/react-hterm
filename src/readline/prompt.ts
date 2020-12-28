@@ -376,7 +376,7 @@ class Complete {
       cursor: cursor,
       input: this._prompt._value,
       n: 0,
-    }); 
+    });
     // @ts-ignore
     this._call.then(response => {
       if (!response) {
@@ -467,13 +467,9 @@ export default class Prompt {
         this._cursor = 0;
         break;
       case 'C-l':
-        if (this._cursor == 0 && this._value === '') {
-          term.ringBell();
-        } else {
-          this._cursor = 0;
-          this._value = '';
-          this._resetHistory();
-        }
+        this._term.reset();
+        this._resetHistory();
+        this._startRow = 0;
         break;
       case 'C-r':
         if (this._shell) {
