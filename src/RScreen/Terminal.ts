@@ -696,6 +696,126 @@ hterm.Terminal.prototype.syncFontFamily = function () {
   this.syncBoldSafeState();
 };
 
+hterm.Terminal.prototype.displayImage = function (options: any) {
+  // Make sure we're actually given a resource to display.
+  if (options.uri === undefined) return;
+
+  // Set up the defaults to simplify code below.
+  if (!options.name) options.name = "";
+
+  // See if we should show this object directly, or download it.
+  if (options.inline) {
+    const io = this.io.push();
+    io.showOverlay(
+      hterm.msg("LOADING_RESOURCE_START", [options.name], "Loading $1 ..."),
+      null
+    );
+
+    // While we're loading the image, eat all the user's input.
+    io.onVTKeystroke = io.sendString = () => {};
+
+    // Initialize this new image.
+    const img = this.document_.createElement("img");
+    img.src = options.uri;
+    img.title = img.alt = options.name;
+
+    // Attach the image to the page to let it load/render.  It won't stay here.
+    // This is needed so it's visible and the DOM can calculate the height.  If
+    // the image is hidden or not in the DOM, the height is always 0.
+    this.document_.body.appendChild(img);
+
+    // Wait for the image to finish loading before we try moving it to the
+    // right place in the terminal.
+    img.onload = () => {
+      // Parse a width/height specification.
+      const parseDim = (dim: any, maxDim: any, cssVar: any) => {
+        if (!dim || dim == "auto") return "";
+
+        const ary = dim.match(/^([0-9]+)(px|%)?$/);
+        if (ary) {
+          if (ary[2] == "%") return (maxDim * parseInt(ary[1])) / 100 + "px";
+          else if (ary[2] == "px") return dim;
+          else return `calc(${dim} * var(${cssVar}))`;
+        }
+
+        return "";
+      };
+      img.style.width = parseDim(
+        options.width,
+        this.document_.body.clientWidth,
+        "--hterm-charsize-width"
+      );
+      img.style.height = parseDim(
+        options.height,
+        this.document_.body.clientHeight,
+        "--hterm-charsize-height"
+      );
+
+      // Figure out how many rows the image occupies, then add that many.
+      // XXX: This count will be inaccurate if the font size changes on us.
+      const padRows = Math.ceil(
+        img.clientHeight / this.scrollPort_.characterSize.height
+      );
+      for (let i = 0; i < padRows; ++i) this.newLine();
+
+      // Update the max height in case the user shrinks the character size.
+
+      // Move the image to the last row.  This way when we scroll up, it doesn't
+      // disappear when the first row gets clipped.  It will disappear when we
+      // scroll down and the last row is clipped ...
+      this.document_.body.removeChild(img);
+      // Create a wrapper node so we can do an absolute in a relative position.
+      // This helps with rounding errors between JS & CSS counts.
+      const row: RRowType = this.getRowNode(
+        this.scrollbackRows_.length + this.getCursorRow() - 1
+      );
+      row.img = {
+        textAlign: options.align,
+        padRows: padRows,
+        objectFit: options.preserveAspectRatio ? "scale-down" : "fill",
+        src: img.src,
+        title: img.title,
+        alt: img.alt,
+        style: {
+          positon: "absolute",
+          bottom: "calc(0px - var(--hterm-charsize-height))",
+        },
+      };
+      touch(row);
+      this.scrollPort_.renderRef.touchRow(row);
+
+      io.hideOverlay();
+      io.pop();
+    };
+
+    // If we got a malformed image, give up.
+    img.onerror = (e: Error) => {
+      this.document_.body.removeChild(img);
+      io.showOverlay(
+        hterm.msg(
+          "LOADING_RESOURCE_FAILED",
+          [options.name],
+          "Loading $1 failed ..."
+        )
+      );
+      io.pop();
+    };
+  }
+};
+
+hterm.Terminal.prototype.getRowsText = function (start: number, end: number) {
+  var ary = [];
+  for (var i = start; i < end; i++) {
+    var node = this.getRowNode(i);
+    ary.push(rowText(node));
+    if (i < end - 1 && !node.o) {
+      ary.push("\n");
+    }
+  }
+
+  return ary.join("");
+};
+
 hterm.Terminal.prototype.setAlternateMode = function (state: any) {
   var cursor = this.saveCursor();
   this.screen_ = state ? this.alternateScreen_ : this.primaryScreen_;
@@ -726,6 +846,10 @@ hterm.Terminal.prototype.setAlternateMode = function (state: any) {
 
   this.restoreCursor(cursor);
   this.scrollPort_.resize(true);
+};
+
+hterm.Terminal.prototype.getRowCount = function () {
+  return this.scrollbackRows_.length + this.screen_.rowsArray.length;
 };
 
 hterm.Terminal.prototype.realizeHeight_ = function (rowCount: number) {

@@ -9934,6 +9934,69 @@ hterm.Terminal.prototype.realizeWidth_ = function (columnCount) {
 };
 
 /**
+ * Deal with terminal height changes.
+ *
+ * This function does what needs to be done when the terminal height changes
+ * out from under us.  It happens here rather than in onResize_() because this
+ * code may need to run synchronously to handle programmatic changes of
+ * terminal height.
+ *
+ * Relying on the browser to send us an async resize event means we may not be
+ * in the correct state yet when the next escape sequence hits.
+ *
+ * @param {number} rowCount The number of rows.
+ */
+hterm.Terminal.prototype.realizeHeight_ = function (rowCount) {
+  if (rowCount <= 0)
+    throw new Error("Attempt to realize bad height: " + rowCount);
+
+  var deltaRows = rowCount - this.screen_.getHeight();
+
+  this.screenSize.height = rowCount;
+
+  var cursor = this.saveCursor();
+
+  if (deltaRows < 0) {
+    // Screen got smaller.
+    deltaRows *= -1;
+    while (deltaRows) {
+      var lastRow = this.getRowCount() - 1;
+      if (lastRow - this.scrollbackRows_.length == cursor.row) break;
+
+      if (this.getRowText(lastRow)) break;
+
+      this.screen_.popRow();
+      deltaRows--;
+    }
+
+    var ary = this.screen_.shiftRows(deltaRows);
+    this.scrollbackRows_.push.apply(this.scrollbackRows_, ary);
+
+    // We just removed rows from the top of the screen, we need to update
+    // the cursor to match.
+    cursor.row = Math.max(cursor.row - deltaRows, 0);
+  } else if (deltaRows > 0) {
+    // Screen got larger.
+
+    if (deltaRows <= this.scrollbackRows_.length) {
+      var scrollbackCount = Math.min(deltaRows, this.scrollbackRows_.length);
+      var rows = this.scrollbackRows_.splice(
+        this.scrollbackRows_.length - scrollbackCount,
+        scrollbackCount
+      );
+      this.screen_.unshiftRows(rows);
+      deltaRows -= scrollbackCount;
+      cursor.row += scrollbackCount;
+    }
+
+    if (deltaRows) this.appendRows_(deltaRows);
+  }
+
+  this.setVTScrollRegion(null, null);
+  this.restoreCursor(cursor);
+};
+
+/**
  * Scroll the terminal to the top of the scrollback buffer.
  */
 hterm.Terminal.prototype.scrollHome = function () {
@@ -10191,6 +10254,206 @@ hterm.Terminal.prototype.interpret = function (str) {
 };
 
 /**
+ * Take over the given DIV for use as the terminal display.
+ *
+ * @param {HTMLDivElement} div The div to use as the terminal display.
+ */
+hterm.Terminal.prototype.decorate = function (div) {
+  const charset = div.ownerDocument.characterSet.toLowerCase();
+  if (charset != "utf-8") {
+    console.warn(
+      `Document encoding should be set to utf-8, not "${charset}";` +
+        ` Add <meta charset='utf-8'/> to your HTML <head> to fix.`
+    );
+  }
+
+  this.div_ = div;
+
+  this.accessibilityReader_ = new hterm.AccessibilityReader(div);
+
+  this.scrollPort_.decorate(div);
+  this.scrollPort_.setBackgroundImage(this.prefs_.get("background-image"));
+  this.scrollPort_.setBackgroundSize(this.prefs_.get("background-size"));
+  this.scrollPort_.setBackgroundPosition(
+    this.prefs_.get("background-position")
+  );
+  this.scrollPort_.setUserCssUrl(this.prefs_.get("user-css"));
+  this.scrollPort_.setUserCssText(this.prefs_.get("user-css-text"));
+  this.scrollPort_.setAccessibilityReader(this.accessibilityReader_);
+
+  this.div_.focus = this.focus.bind(this);
+
+  this.setFontSize(this.prefs_.get("font-size"));
+  this.syncFontFamily();
+
+  this.setScrollbarVisible(this.prefs_.get("scrollbar-visible"));
+  this.setScrollWheelMoveMultipler(
+    this.prefs_.get("scroll-wheel-move-multiplier")
+  );
+
+  this.document_ = this.scrollPort_.getDocument();
+  this.accessibilityReader_.decorate(this.document_);
+
+  // this.document_.body.oncontextmenu = function () {
+  //   return false;
+  // };
+  // this.contextMenu.setDocument(this.document_);
+
+  var onMouse = this.onMouse_.bind(this);
+  var screenNode = this.scrollPort_.getScreenNode();
+  screenNode.addEventListener("mousedown", onMouse);
+  screenNode.addEventListener("mouseup", onMouse);
+  screenNode.addEventListener("mousemove", onMouse);
+  this.scrollPort_.onScrollWheel = onMouse;
+
+  screenNode.addEventListener("keydown", this.onKeyboardActivity_.bind(this));
+
+  screenNode.addEventListener("focus", this.onFocusChange_.bind(this, true));
+  // Listen for mousedown events on the screenNode as in FF the focus
+  // events don't bubble.
+  screenNode.addEventListener(
+    "mousedown",
+    function () {
+      setTimeout(this.onFocusChange_.bind(this, true));
+    }.bind(this)
+  );
+
+  screenNode.addEventListener("blur", this.onFocusChange_.bind(this, false));
+
+  var style = this.document_.createElement("style");
+  style.textContent =
+    '.cursor-node[focus="false"] {' +
+    "  box-sizing: border-box;" +
+    "  background-color: transparent !important;" +
+    "  border-width: 2px;" +
+    "  border-style: solid;" +
+    "}" +
+    "menu {" +
+    "  margin: 0;" +
+    "  padding: 0;" +
+    "  cursor: var(--hterm-mouse-cursor-pointer);" +
+    "}" +
+    "menuitem {" +
+    "  white-space: nowrap;" +
+    "  border-bottom: 1px dashed;" +
+    "  display: block;" +
+    "  padding: 0.3em 0.3em 0 0.3em;" +
+    "}" +
+    "menuitem.separator {" +
+    "  border-bottom: none;" +
+    "  height: 0.5em;" +
+    "  padding: 0;" +
+    "}" +
+    "menuitem:hover {" +
+    "  color: var(--hterm-cursor-color);" +
+    "}" +
+    ".wc-node {" +
+    "  display: inline-block;" +
+    "  text-align: center;" +
+    "  width: calc(var(--hterm-charsize-width) * 2);" +
+    "  line-height: var(--hterm-charsize-height);" +
+    "}" +
+    ":root {" +
+    "  --hterm-charsize-width: " +
+    this.scrollPort_.characterSize.width +
+    "px;" +
+    "  --hterm-charsize-height: " +
+    this.scrollPort_.characterSize.height +
+    "px;" +
+    // Default position hides the cursor for when the window is initializing.
+    "  --hterm-cursor-offset-col: -1;" +
+    "  --hterm-cursor-offset-row: -1;" +
+    "  --hterm-blink-node-duration: 0.7s;" +
+    "  --hterm-mouse-cursor-text: text;" +
+    "  --hterm-mouse-cursor-pointer: default;" +
+    "  --hterm-mouse-cursor-style: var(--hterm-mouse-cursor-text);" +
+    "}" +
+    ".uri-node:hover {" +
+    "  text-decoration: underline;" +
+    "  cursor: var(--hterm-mouse-cursor-pointer), pointer;" +
+    "}" +
+    "@keyframes blink {" +
+    "  from { opacity: 1.0; }" +
+    "  to { opacity: 0.0; }" +
+    "}" +
+    ".blink-node {" +
+    "  animation-name: blink;" +
+    "  animation-duration: var(--hterm-blink-node-duration);" +
+    "  animation-iteration-count: infinite;" +
+    "  animation-timing-function: ease-in-out;" +
+    "  animation-direction: alternate;" +
+    "}";
+  // Insert this stock style as the first node so that any user styles will
+  // override w/out having to use !important everywhere.  The rules above mix
+  // runtime variables with default ones designed to be overridden by the user,
+  // but we can wait for a concrete case from the users to determine the best
+  // way to split the sheet up to before & after the user-css settings.
+  this.document_.head.insertBefore(style, this.document_.head.firstChild);
+
+  this.cursorNode_ = this.document_.createElement("div");
+  this.cursorNode_.id = "hterm:terminal-cursor";
+  this.cursorNode_.className = "cursor-node";
+  this.cursorNode_.style.cssText =
+    "position: absolute;" +
+    "left: calc(var(--hterm-charsize-width) * var(--hterm-cursor-offset-col));" +
+    "top: calc(var(--hterm-charsize-height) * var(--hterm-cursor-offset-row));" +
+    "display: " +
+    (this.options_.cursorVisible ? "" : "none") +
+    ";" +
+    "width: var(--hterm-charsize-width);" +
+    "height: var(--hterm-charsize-height);" +
+    "background-color: var(--hterm-cursor-color);" +
+    "border-color: var(--hterm-cursor-color);" +
+    "-webkit-transition: opacity, background-color 100ms linear;" +
+    "-moz-transition: opacity, background-color 100ms linear;";
+
+  this.setCursorColor();
+  this.setCursorBlink(!!this.prefs_.get("cursor-blink"));
+  this.restyleCursor_();
+
+  this.document_.body.appendChild(this.cursorNode_);
+
+  // When 'enableMouseDragScroll' is off we reposition this element directly
+  // under the mouse cursor after a click.  This makes Chrome associate
+  // subsequent mousemove events with the scroll-blocker.  Since the
+  // scroll-blocker is a peer (not a child) of the scrollport, the mousemove
+  // events do not cause the scrollport to scroll.
+  //
+  // It's a hack, but it's the cleanest way I could find.
+  this.scrollBlockerNode_ = this.document_.createElement("div");
+  this.scrollBlockerNode_.id = "hterm:mouse-drag-scroll-blocker";
+  this.scrollBlockerNode_.setAttribute("aria-hidden", "true");
+  this.scrollBlockerNode_.style.cssText =
+    "position: absolute;" +
+    "top: -99px;" +
+    "display: block;" +
+    "width: 10px;" +
+    "height: 10px;";
+  this.document_.body.appendChild(this.scrollBlockerNode_);
+
+  this.scrollPort_.onScrollWheel = onMouse;
+  ["mousedown", "mouseup", "mousemove", "click", "dblclick"].forEach(
+    function (event) {
+      this.scrollBlockerNode_.addEventListener(event, onMouse);
+      this.cursorNode_.addEventListener(event, onMouse);
+      this.document_.addEventListener(event, onMouse);
+    }.bind(this)
+  );
+
+  this.cursorNode_.addEventListener(
+    "mousedown",
+    function () {
+      setTimeout(this.focus.bind(this));
+    }.bind(this)
+  );
+
+  this.setReverseVideo(false);
+
+  this.scrollPort_.focus();
+  this.scrollPort_.scheduleRedraw();
+};
+
+/**
  * Return the HTML document that contains the terminal DOM nodes.
  *
  * @return {HTMLDocument}
@@ -10259,6 +10522,80 @@ hterm.Terminal.prototype.renumberRows_ = function (start, end, opt_screen) {
   for (var i = start; i < end; i++) {
     screen.rowsArray[i].rowIndex = offset + i;
   }
+};
+
+/**
+ * Print a string to the terminal.
+ *
+ * This respects the current insert and wraparound modes.  It will add new lines
+ * to the end of the terminal, scrolling off the top into the scrollback buffer
+ * if necessary.
+ *
+ * The string is *not* parsed for escape codes.  Use the interpret() method if
+ * that's what you're after.
+ *
+ * @param{string} str The string to print.
+ */
+hterm.Terminal.prototype.print = function (str) {
+  this.scheduleSyncCursorPosition_();
+
+  // Basic accessibility output for the screen reader.
+  this.accessibilityReader_.announce(str);
+
+  var startOffset = 0;
+
+  var strWidth = lib.wc.strWidth(str);
+  // Fun edge case: If the string only contains zero width codepoints (like
+  // combining characters), we make sure to iterate at least once below.
+  if (strWidth == 0 && str) strWidth = 1;
+
+  while (startOffset < strWidth) {
+    if (this.options_.wraparound && this.screen_.cursorPosition.overflow) {
+      this.screen_.commitLineOverflow();
+      this.newLine(true);
+    }
+
+    var count = strWidth - startOffset;
+    var didOverflow = false;
+    var substr;
+
+    if (this.screen_.cursorPosition.column + count >= this.screenSize.width) {
+      didOverflow = true;
+      count = this.screenSize.width - this.screen_.cursorPosition.column;
+    }
+
+    if (didOverflow && !this.options_.wraparound) {
+      // If the string overflowed the line but wraparound is off, then the
+      // last printed character should be the last of the string.
+      // TODO: This will add to our problems with multibyte UTF-16 characters.
+      substr =
+        lib.wc.substr(str, startOffset, count - 1) +
+        lib.wc.substr(str, strWidth - 1);
+      count = strWidth;
+    } else {
+      substr = lib.wc.substr(str, startOffset, count);
+    }
+
+    var tokens = hterm.TextAttributes.splitWidecharString(substr);
+    for (var i = 0; i < tokens.length; i++) {
+      this.screen_.textAttributes.wcNode = tokens[i].wcNode;
+      this.screen_.textAttributes.asciiNode = tokens[i].asciiNode;
+
+      if (this.options_.insertMode) {
+        this.screen_.insertString(tokens[i].str, tokens[i].wcStrWidth);
+      } else {
+        this.screen_.overwriteString(tokens[i].str, tokens[i].wcStrWidth);
+      }
+      this.screen_.textAttributes.wcNode = false;
+      this.screen_.textAttributes.asciiNode = true;
+    }
+
+    this.screen_.maybeClipCurrentRow();
+    startOffset += count;
+  }
+
+  if (this.scrollOnOutput_)
+    this.scrollPort_.scrollRowToBottom(this.getRowCount());
 };
 
 /**
