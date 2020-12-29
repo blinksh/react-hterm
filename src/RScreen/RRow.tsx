@@ -20,11 +20,17 @@ export default class RRow extends Component<PropsType> {
       const node = nodes[i];
       elements[i] = React.createElement(RNode, { key: node.key, node });
     }
+    var props = null;
     if (this.props.row.img) {
       elements.push(this._renderImage(this.props.row.img));
+      props = {
+        style: {
+          overflow: 'visible'
+        }
+      }
     }
     this._dirty = false;
-    return React.createElement('x-row', null, elements);
+    return React.createElement('x-row', props, elements);
   }
 
   _renderImage(img: RImageType) {

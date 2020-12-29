@@ -753,9 +753,13 @@ hterm.Terminal.prototype.displayImage = function (options: any) {
 
       // Figure out how many rows the image occupies, then add that many.
       // XXX: This count will be inaccurate if the font size changes on us.
-      const padRows = Math.ceil(
+      var padRows = Math.ceil(
         img.clientHeight / this.scrollPort_.characterSize.height
       );
+      const rowsLimit = Math.round(this.scrollPort_.visibleRowCount * 2) / 3;
+      if (padRows > rowsLimit) {
+        padRows = rowsLimit;
+      }
       for (let i = 0; i < padRows; ++i) this.newLine();
 
       // Update the max height in case the user shrinks the character size.
