@@ -1,8 +1,8 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-import { hterm, lib } from '../hterm_all';
-import ReactDOM from 'react-dom';
+import { hterm, lib } from "../hterm_all";
+import ReactDOM from "react-dom";
 
 /**
  * Skip over the string until the next String Terminator (ST, 'ESC \') or
@@ -18,7 +18,7 @@ import ReactDOM from 'react-dom';
  *     exceeded the max string sequence.
  */
 var _codeRegex = /[\x1b\x07]/;
-hterm.VT.prototype.parseUntilStringTerminator_ = function(parseState: any) {
+hterm.VT.prototype.parseUntilStringTerminator_ = function (parseState: any) {
   var buf = parseState.peekRemainingBuf();
   var args = parseState.args;
   // Since we might modify parse state buffer locally, if we want to advance
@@ -26,15 +26,15 @@ hterm.VT.prototype.parseUntilStringTerminator_ = function(parseState: any) {
   let bufInserted = 0;
 
   if (!args.length) {
-    args[0] = '';
+    args[0] = "";
     args[1] = new Date();
   } else {
     // If our saved buffer ends with an escape, it's because we were hoping
     // it's an ST split across two buffers.  Move it from our saved buffer
     // to the start of our current buffer for processing anew.
-    if (args[0].slice(-1) == '\x1b') {
+    if (args[0].slice(-1) == "\x1b") {
       args[0] = args[0].slice(0, -1);
-      buf = '\x1b' + buf;
+      buf = "\x1b" + buf;
       bufInserted = 1;
     }
   }
@@ -45,7 +45,7 @@ hterm.VT.prototype.parseUntilStringTerminator_ = function(parseState: any) {
 
   // If the next escape we see is not a start of a ST, fall through.  This will
   // either be invalid (embedded escape), or we'll queue it up (wait for \\).
-  if (terminator == '\x1b' && buf.charAt(nextTerminator + 1) !== '\\') {
+  if (terminator == "\x1b" && buf.charAt(nextTerminator + 1) !== "\\") {
     foundTerminator = false;
   } else {
     foundTerminator = nextTerminator !== -1;
@@ -61,19 +61,19 @@ hterm.VT.prototype.parseUntilStringTerminator_ = function(parseState: any) {
     // Special case: If our buffering happens to split the ST (\e\\), we have to
     // buffer the content temporarily.  So don't reject a trailing escape here,
     // instead we let it timeout or be rejected in the next pass.
-    if (terminator == '\x1b' && nextTerminator != buf.length - 1)
-      abortReason = 'embedded escape: ' + nextTerminator;
+    if (terminator == "\x1b" && nextTerminator != buf.length - 1)
+      abortReason = "embedded escape: " + nextTerminator;
 
     // @ts-ignore
     if (new Date() - args[1] > this.oscTimeLimit_)
       // @ts-ignore
-      abortReason = 'timeout expired: ' + (new Date() - args[1]);
+      abortReason = "timeout expired: " + (new Date() - args[1]);
 
     if (abortReason) {
       if (this.warnUnimplemented)
         console.log(
-          'parseUntilStringTerminator_: aborting: ' + abortReason,
-          args[0],
+          "parseUntilStringTerminator_: aborting: " + abortReason,
+          args[0]
         );
       parseState.reset(args[0]);
       return false;
@@ -87,7 +87,7 @@ hterm.VT.prototype.parseUntilStringTerminator_ = function(parseState: any) {
 
   parseState.resetParseFunction();
   parseState.advance(
-    nextTerminator + (terminator == '\x1b' ? 2 : 1) - bufInserted,
+    nextTerminator + (terminator == "\x1b" ? 2 : 1) - bufInserted
   );
 
   return true;
@@ -97,18 +97,18 @@ hterm.VT.prototype.parseUntilStringTerminator_ = function(parseState: any) {
  * Dispatch to the function that handles a given CC1, ESC, or CSI or VT52 code.
  */
 // @ts-ignore
-hterm.VT.prototype.dispatch = function(type, code, parseState) {
+hterm.VT.prototype.dispatch = function (type, code, parseState) {
   // @ts-ignore
   var handler = _VTMaps.get(type).get(code);
   if (!handler) {
     if (this.warnUnimplemented)
-      console.warn('Unknown ' + type + ' code: ' + JSON.stringify(code));
+      console.warn("Unknown " + type + " code: " + JSON.stringify(code));
     return;
   }
 
   if (handler === hterm.VT.ignore) {
     if (this.warnUnimplemented)
-      console.warn('Ignored ' + type + ' code: ' + JSON.stringify(code));
+      console.warn("Ignored " + type + " code: " + JSON.stringify(code));
     return;
   }
 
@@ -116,12 +116,12 @@ hterm.VT.prototype.dispatch = function(type, code, parseState) {
   if (parseState.subargs && !handler.supportsSubargs) {
     if (this.warnUnimplemented)
       console.warn(
-        'Ignored ' + type + ' code w/subargs: ' + JSON.stringify(code),
+        "Ignored " + type + " code w/subargs: " + JSON.stringify(code)
       );
     return;
   }
 
-  if (type === 'CC1' && code > '\x7f' && !this.enable8BitControl) {
+  if (type === "CC1" && code > "\x7f" && !this.enable8BitControl) {
     // It's kind of a hack to put this here, but...
     //
     // If we're dispatching a 'CC1' code, and it's got the eighth bit set,
@@ -131,7 +131,7 @@ hterm.VT.prototype.dispatch = function(type, code, parseState) {
     // (APC, '\x9f') from locking up the terminal waiting for its expected
     // (ST, '\x9c') or (BEL, '\x07').
     console.warn(
-      'Ignoring 8-bit control code: 0x' + code.charCodeAt(0).toString(16),
+      "Ignoring 8-bit control code: 0x" + code.charCodeAt(0).toString(16)
     );
     return;
   }
@@ -143,11 +143,11 @@ hterm.VT.prototype.dispatch = function(type, code, parseState) {
   //handler._binded(parseState, code);
 };
 
-hterm.VT.ParseState.prototype.peekRemainingBuf = function() {
+hterm.VT.ParseState.prototype.peekRemainingBuf = function () {
   return this.buf.substr(this.pos);
 };
 
-hterm.VT.ParseState.prototype.peekChar = function() {
+hterm.VT.ParseState.prototype.peekChar = function () {
   return this.buf.charAt(this.pos);
 };
 
@@ -157,7 +157,7 @@ hterm.VT.ParseState.prototype.peekChar = function() {
  *
  * @return {string} The next character in the buffer.
  */
-hterm.VT.ParseState.prototype.consumeChar = function(): string {
+hterm.VT.ParseState.prototype.consumeChar = function (): string {
   return this.buf.charAt(this.pos++);
 };
 
@@ -173,14 +173,14 @@ function __print(self: hterm.VT, str: string) {
 }
 
 // @ts-ignore
-hterm.VT.prototype.parseUnknown_ = function(parseState) {
+hterm.VT.prototype.parseUnknown_ = function (parseState) {
   // Search for the next contiguous block of plain text.
   var buf = parseState.peekRemainingBuf();
   var nextControl = buf.search(this.cc1Pattern_);
 
   if (nextControl === 0) {
     // We've stumbled right into a control character.
-    this.dispatch('CC1', buf.charAt(0), parseState);
+    this.dispatch("CC1", buf.charAt(0), parseState);
     parseState.advance(1);
     return;
   }
@@ -193,7 +193,7 @@ hterm.VT.prototype.parseUnknown_ = function(parseState) {
   }
 
   __print(this, buf.substr(0, nextControl));
-  this.dispatch('CC1', buf.charAt(nextControl), parseState);
+  this.dispatch("CC1", buf.charAt(nextControl), parseState);
   parseState.advance(nextControl + 1);
 };
 
@@ -248,7 +248,7 @@ function __interpret() {
       ) {
         __busy = false;
         __currentParseState = null;
-        throw 'Parser did not alter the state!';
+        throw "Parser did not alter the state!";
       }
 
       if (timeBudget < Date.now()) {
@@ -264,7 +264,7 @@ function __interpret() {
 }
 
 // @ts-ignore
-hterm.VT.prototype.interpret = function(buf) {
+hterm.VT.prototype.interpret = function (buf) {
   __vt = this;
   __buffQueue.push(this.decode(buf));
   if (__busy) {
@@ -287,19 +287,19 @@ function __finishParsing(parseState) {
 }
 
 // @ts-ignore
-hterm.VT.prototype.parseCSI_ = function(parseState) {
+hterm.VT.prototype.parseCSI_ = function (parseState) {
   var ch = parseState.peekChar();
   var args = parseState.args;
 
-  if (ch >= '@' && ch <= '~') {
+  if (ch >= "@" && ch <= "~") {
     // This is the final character.
     this.dispatch(
-      'CSI',
+      "CSI",
       this.leadingModifier_ + this.trailingModifier_ + ch,
-      parseState,
+      parseState
     );
     __finishParsing(parseState);
-  } else if (ch === ';') {
+  } else if (ch === ";") {
     // Parameter delimiter.
     if (this.trailingModifier_) {
       // Parameter delimiter after the trailing modifier.  That's a paddlin'.
@@ -307,12 +307,12 @@ hterm.VT.prototype.parseCSI_ = function(parseState) {
     } else {
       if (!args.length) {
         // They omitted the first param, we need to supply it.
-        args.push('');
+        args.push("");
       }
 
-      args.push('');
+      args.push("");
     }
-  } else if ((ch >= '0' && ch <= '9') || ch === ':') {
+  } else if ((ch >= "0" && ch <= "9") || ch === ":") {
     // Next byte in the current parameter.
 
     if (this.trailingModifier_) {
@@ -326,11 +326,11 @@ hterm.VT.prototype.parseCSI_ = function(parseState) {
       }
 
       // Possible sub-parameters.
-      if (ch === ':') {
+      if (ch === ":") {
         parseState.argSetSubargs(args.length - 1);
       }
     }
-  } else if (ch >= ' ' && ch <= '?') {
+  } else if (ch >= " " && ch <= "?") {
     // Modifier character.
     if (args.length) {
       this.trailingModifier_ += ch;
@@ -339,7 +339,7 @@ hterm.VT.prototype.parseCSI_ = function(parseState) {
     }
   } else if (this.cc1Pattern_.test(ch)) {
     // Control character.
-    this.dispatch('CC1', ch, parseState);
+    this.dispatch("CC1", ch, parseState);
   } else {
     // Unexpected character in sequence, bail out.
     __finishParsing(parseState);
@@ -354,26 +354,26 @@ var _VTMaps: Map<string, Map<string, Function>> = new Map();
 function __parseESC(parseState) {
   var ch = parseState.consumeChar();
 
-  if (ch == '\x1b') {
+  if (ch == "\x1b") {
     return;
   }
 
   // @ts-ignore
-  this.dispatch('ESC', ch, parseState);
+  this.dispatch("ESC", ch, parseState);
 
   if (parseState.func == __parseESC) {
     parseState.resetParseFunction();
   }
 }
 
-hterm.VT.ParseState.prototype.resetArguments = function() {
+hterm.VT.ParseState.prototype.resetArguments = function () {
   this.args = [];
   //this.args.length = 0;
   //if (typeof opt_arg_zero != 'undefined') this.args[0] = opt_arg_zero;
 };
 
 // @ts-ignore
-hterm.VT.ParseState.prototype.parseInt = function(argstr, defaultValue) {
+hterm.VT.ParseState.prototype.parseInt = function (argstr, defaultValue) {
   const ret = argstr >> 0;
   if (ret === 0) {
     return defaultValue === undefined ? ret : defaultValue;
@@ -385,8 +385,8 @@ hterm.VT.ParseState.prototype.parseInt = function(argstr, defaultValue) {
 function __parseIndexColor(
   args: number[],
   i: number,
-  attrs: hterm.TextAttributes,
-): { skipCount: number, color?: number } {
+  attrs: hterm.TextAttributes
+): { skipCount: number; color?: number } {
   // Color palette index.
   // If we're short on args, assume this sequence is corrupted, so don't
   // eat anything more.
@@ -409,14 +409,14 @@ function __parseIndexColor(
 }
 
 // @ts-ignore
-hterm.VT.prototype.parseSgrExtendedColors = function(parseState, i, attrs) {
+hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
   let ary;
   let usedSubargs;
 
   if (parseState.argHasSubargs(i)) {
     // The ISO 8613-6 compliant form.
     // e.g. 38:[color choice]:[arg1]:[arg2]:...
-    ary = parseState.args[i].split(':');
+    ary = parseState.args[i].split(":");
     ary.shift(); // Remove "38".
     usedSubargs = true;
   } else if (parseState.argHasSubargs(i + 1)) {
@@ -451,7 +451,7 @@ hterm.VT.prototype.parseSgrExtendedColors = function(parseState, i, attrs) {
       if (!usedSubargs) return { skipCount: 0 };
 
       return {
-        color: 'rgba(0, 0, 0, 0)',
+        color: "rgba(0, 0, 0, 0)",
         skipCount: 0,
       };
     }
@@ -547,11 +547,11 @@ hterm.VT.prototype.parseSgrExtendedColors = function(parseState, i, attrs) {
   }
 };
 
-hterm.VT.CC1['\x1b'] = function(parseState) {
+hterm.VT.CC1["\x1b"] = function (parseState) {
   parseState.func = __parseESC;
 };
 
-hterm.VT.OSC['52'] = function(parseState) {
+hterm.VT.OSC["52"] = function (parseState) {
   // @ts-ignore
   if (!this.enableClipboardWrite) return;
 
@@ -571,13 +571,13 @@ hterm.VT.OSC['52'] = function(parseState) {
   if (data) this.terminal.copyStringToClipboard(this.decode(data));
 };
 
-hterm.VT.OSC['1337'] = function(parseState) {
+hterm.VT.OSC["1337"] = function (parseState) {
   // Blink extension
-  if (parseState.args[0] === 'BlinkAutoCR=1') {
+  if (parseState.args[0] === "BlinkAutoCR=1") {
     // @ts-ignore
     this.terminal.setAutoCarriageReturn(true);
     return;
-  } else if (parseState.args[0] === 'BlinkAutoCR=0') {
+  } else if (parseState.args[0] === "BlinkAutoCR=0") {
     // @ts-ignore
     this.terminal.setAutoCarriageReturn(false);
     return;
@@ -601,49 +601,49 @@ hterm.VT.OSC['1337'] = function(parseState) {
   }
 
   const options = {
-    name: '',
+    name: "",
     size: 0,
     preserveAspectRatio: true,
     inline: false,
-    width: 'auto',
-    height: 'auto',
-    align: 'left',
+    width: "auto",
+    height: "auto",
+    align: "left",
     uri:
-      'data:application/octet-stream;base64,' +
-      args[2].replace(/[\n\r]+/gm, ''),
+      "data:application/octet-stream;base64," +
+      args[2].replace(/[\n\r]+/gm, ""),
   };
   // Walk the "key=value;" sets.
   // @ts-ignore
-  args[1].split(';').forEach(ele => {
+  args[1].split(";").forEach((ele) => {
     const kv = ele.match(/^([^=]+)=(.*)$/m);
     if (!kv) return;
 
     // Sanitize values nicely.
     switch (kv[1]) {
-      case 'name':
+      case "name":
         try {
           options.name = window.atob(kv[2]);
         } catch (e) {}
         break;
-      case 'size':
+      case "size":
         try {
           options.size = parseInt(kv[2]);
         } catch (e) {}
         break;
-      case 'width':
+      case "width":
         options.width = kv[2];
         break;
-      case 'height':
+      case "height":
         options.height = kv[2];
         break;
-      case 'preserveAspectRatio':
-        options.preserveAspectRatio = !(kv[2] == '0');
+      case "preserveAspectRatio":
+        options.preserveAspectRatio = !(kv[2] == "0");
         break;
-      case 'inline':
-        options.inline = !(kv[2] == '0');
+      case "inline":
+        options.inline = !(kv[2] == "0");
         break;
       // hterm-specific keys.
-      case 'align':
+      case "align":
         options.align = kv[2];
         break;
       default:
@@ -671,10 +671,10 @@ hterm.VT.OSC['1337'] = function(parseState) {
 /**
  * Set/read color palette.
  */
-hterm.VT.OSC['4'] = function(parseState) {
+hterm.VT.OSC["4"] = function (parseState) {
   // Args come in as a single 'index1;rgb1 ... ;indexN;rgbN' string.
   // We split on the semicolon and iterate through the pairs.
-  var args = parseState.args[0].split(';');
+  var args = parseState.args[0].split(";");
 
   // @ts-ignore
   var pairCount = parseInt(args.length / 2);
@@ -688,10 +688,10 @@ hterm.VT.OSC['4'] = function(parseState) {
 
     if (colorIndex >= colorPalette.length) continue;
 
-    if (colorValue == '?') {
+    if (colorValue == "?") {
       // '?' means we should report back the current color value.
       colorValue = lib.colors.rgbToX11(colorPalette[colorIndex]);
-      if (colorValue) responseArray.push(colorIndex + ';' + colorValue);
+      if (colorValue) responseArray.push(colorIndex + ";" + colorValue);
 
       continue;
     }
@@ -702,7 +702,7 @@ hterm.VT.OSC['4'] = function(parseState) {
 
   if (responseArray.length)
     // @ts-ignore
-    this.terminal.io.sendString('\x1b]4;' + responseArray.join(';') + '\x07');
+    this.terminal.io.sendString("\x1b]4;" + responseArray.join(";") + "\x07");
 
   // @ts-ignore
   this.terminal.getTextAttributes().refreshCSSPalette();
@@ -711,20 +711,22 @@ hterm.VT.OSC['4'] = function(parseState) {
 /**
  * Change/Read VT100 text foreground color.
  */
-hterm.VT.OSC['10'] = function(parseState) {
+hterm.VT.OSC["10"] = function (parseState) {
   // Args come in as a single string, but extra args will chain to the following
   // OSC sequences.
-  var args = parseState.args[0].split(';');
+  var args = parseState.args[0].split(";");
   if (!args) return;
 
   var colorArg = args.shift();
-  if (colorArg == '?') {
+  if (colorArg == "?") {
     // '?' means we should report back the current color value.
     // @ts-ignore
     var colorValue = lib.colors.rgbToX11(this.terminal.getForegroundColor());
     if (colorValue) {
+      // http://pod.tst.eu/http://cvs.schmorp.de/rxvt-unicode/doc/rxvt.7.pod#XTerm_Operating_System_Commands
+      // we send 0x1b, 0x5c instead of 0x07
       // @ts-ignore
-      this.terminal.io.sendString('\x1b]10;' + colorValue + '\x07');
+      this.terminal.io.sendString("\x1b]10;" + colorValue + "\x1b\x5c");
     }
   } else {
     var colorX11 = lib.colors.x11ToCSS(colorArg);
@@ -735,28 +737,28 @@ hterm.VT.OSC['10'] = function(parseState) {
   }
 
   if (args.length > 0) {
-    parseState.args[0] = args.join(';');
-    hterm.VT.OSC['11'].apply(this, [parseState]);
+    parseState.args[0] = args.join(";");
+    hterm.VT.OSC["11"].apply(this, [parseState]);
   }
 };
 
 /**
  * Change/Read VT100 text background color.
  */
-hterm.VT.OSC['11'] = function(parseState) {
+hterm.VT.OSC["11"] = function (parseState) {
   // Args come in as a single string, but extra args will chain to the following
   // OSC sequences.
-  var args = parseState.args[0].split(';');
+  var args = parseState.args[0].split(";");
   if (!args) return;
 
   var colorArg = args.shift();
-  if (colorArg == '?') {
+  if (colorArg == "?") {
     // '?' means we should report back the current color value.
     // @ts-ignore
     var colorValue = lib.colors.rgbToX11(this.terminal.getBackgroundColor());
     if (colorValue) {
       // @ts-ignore
-      this.terminal.io.sendString('\x1b]11;' + colorValue + '\x07');
+      this.terminal.io.sendString("\x1b]11;" + colorValue + "\x1b\x5c");
     }
   } else {
     var colorX11 = lib.colors.x11ToCSS(colorArg);
@@ -767,16 +769,16 @@ hterm.VT.OSC['11'] = function(parseState) {
   }
 
   if (args.length > 0) {
-    parseState.args[0] = args.join(';');
-    hterm.VT.OSC['12'].apply(this, [parseState]);
+    parseState.args[0] = args.join(";");
+    hterm.VT.OSC["12"].apply(this, [parseState]);
   }
 };
 
-['CC1', 'ESC', 'CSI', 'OSC', 'VT52'].forEach(type => {
+["CC1", "ESC", "CSI", "OSC", "VT52"].forEach((type) => {
   var map: Map<string, Function> = new Map();
   // @ts-ignore
   var obj = hterm.VT[type];
-  Object.keys(obj).map(k => {
+  Object.keys(obj).map((k) => {
     map.set(k, obj[k]);
   });
   _VTMaps.set(type, map);
