@@ -980,7 +980,8 @@ export default class Keyboard implements IKeyboard {
     let parts = str.split(/:/g);
     let savedMods = this._mods;
     this._mods = {
-      Shift: new Set(),
+      // copy shift state
+      Shift: new Set(savedMods.Shift),
       Alt: new Set(),
       Meta: new Set(),
       Control: new Set(),
