@@ -373,14 +373,14 @@ hterm.VT.ParseState.prototype.resetArguments = function () {
 };
 
 // @ts-ignore
-hterm.VT.ParseState.prototype.parseInt = function (argstr, defaultValue) {
-  const ret = argstr >> 0;
-  if (ret === 0) {
-    return defaultValue === undefined ? ret : defaultValue;
-  }
-
-  return ret;
-};
+// hterm.VT.ParseState.prototype.parseInt = function (argstr, defaultValue) {
+//   const ret = argstr >> 0;
+//   if (ret === 0) {
+//     return defaultValue === undefined ? ret : defaultValue;
+//   }
+// 
+//   return ret;
+// };
 
 function __parseIndexColor(
   args: number[],

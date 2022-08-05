@@ -15493,13 +15493,14 @@ hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
  */
 hterm.VT.CSI["m"] = function (parseState) {
   var attrs = this.terminal.getTextAttributes();
+  var len = parseState.args.length;
 
-  if (!parseState.args.length) {
+  if (!len) {
     attrs.reset();
     return;
   }
 
-  for (var i = 0; i < parseState.args.length; i++) {
+  for (var i = 0; i < len; i++) {
     // If this argument has subargs (i.e. it has args followed by colons),
     // the iarg logic will implicitly truncate that off for us.
     var arg = parseState.iarg(i, 0);
