@@ -381,9 +381,22 @@ hterm.VT.ParseState.prototype.resetArguments = function () {
 // 
 //   return ret;
 // };
+hterm.VT.ParseState.prototype.parseInt = function (argstr, defaultValue) {
+  if (argstr) {
+    const ret = parseInt(argstr, 10);
+    // An argument of zero is treated as the default value.
+    if (ret === 0) {
+        if (defaultValue === undefined) defaultValue = 0;
+        return defaultValue;
+    }
+    return ret;
+  }
+  if (defaultValue === undefined) defaultValue = 0;
+  return defaultValue;
+};
 
 function __parseIndexColor(
-  args: number[],
+  args: any[],
   i: number,
   attrs: hterm.TextAttributes
 ): { skipCount: number; color?: number } {
@@ -396,7 +409,7 @@ function __parseIndexColor(
 
   // Support 38:5:P (ISO 8613-6) and 38;5;P (xterm/legacy).
   // We also ignore extra args with 38:5:P:[...], but more for laziness.
-  const color = args[i + 2] >> 0;
+  const color = parseInt(args[i + 2], 10);
   if (color < attrs.colorPalette.length) {
     return {
       skipCount: 2,
@@ -432,7 +445,7 @@ hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
     // support, and many applications rely on.
     // e.g. 38;2;R;G;B
     // try to avoid slice
-    if (parseState.args[i + 1] >> 0 === 5) {
+    if (parseInt(parseState.args[i + 1], 10) === 5) {
       return __parseIndexColor(parseState.args, i, attrs);
     }
     ary = parseState.args.slice(i + 1);
@@ -440,7 +453,7 @@ hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
   }
 
   // Figure out which form to parse.
-  switch (ary[0] >> 0) {
+  switch (parseInt(ary[0], 10)) {
     default: // Unknown.
     case 0: // Implementation defined.  We ignore it.
       return { skipCount: 0 };
@@ -480,9 +493,9 @@ hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
       // and we don't care about them.
       if (ary.length < start + 3) return { skipCount: 0 };
 
-      const r = ary[start + 0] >> 0;
-      const g = ary[start + 1] >> 0;
-      const b = ary[start + 2] >> 0;
+      const r = parseInt(ary[start + 0], 10);
+      const g = parseInt(ary[start + 1], 10);
+      const b = parseInt(ary[start + 2], 10);
       return {
         color: `rgb(${r}, ${g}, ${b})`,
         skipCount: usedSubargs ? 0 : 4,
@@ -500,9 +513,9 @@ hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
       if (ary.length < 4) return { skipCount: 0 };
 
       // TODO: See CMYK below.
-      const c = ary[1] >> 0;
-      const m = ary[2] >> 0;
-      const y = ary[3] >> 0;
+      const c = parseInt(ary[1], 10);
+      const m = parseInt(ary[2], 10);
+      const y = parseInt(ary[3], 10);
       return { skipCount: 0 };
     }
 
@@ -521,10 +534,10 @@ hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
       // https://www.w3.org/TR/css-color-4/#cmyk-colors
       // Or normalize it to RGB ourselves:
       // https://www.w3.org/TR/css-color-4/#cmyk-rgb
-      const c = ary[1] >> 0;
-      const m = ary[2] >> 0;
-      const y = ary[3] >> 0;
-      const k = ary[4] >> 0;
+      const c = parseInt(ary[1], 10);
+      const m = parseInt(ary[2], 10);
+      const y = parseInt(ary[3], 10);
+      const k = parseInt(ary[4], 10);
       return { skipCount: 0 };
     }
 
@@ -539,7 +552,7 @@ hterm.VT.prototype.parseSgrExtendedColors = function (parseState, i, attrs) {
       const ret = {
         skipCount: usedSubargs ? 0 : 2,
       };
-      const color = ary[1] >> 0;
+      const color = parseInt(ary[1], 10);
       // @ts-ignore
       if (color < attrs.colorPalette.length) ret.color = color;
       return ret;
