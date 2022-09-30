@@ -16,7 +16,7 @@ class History {
   _prompt: Prompt;
   _cursor: number = -1;
   _lastValue: string = '';
-  _lastPrompt: string = '';
+  _lastPrompt: [string] = [''];
   _call: any = null;
   _lines: Array<LineType> = [];
   _total: number = 0;
@@ -407,7 +407,8 @@ class Complete {
   }
 }
 export default class Prompt {
-  _prompt: string = '';
+  _prompt: [string] = [''];
+  _promptLastLine = '';
   _shell: boolean = false;
   _secure: boolean = false;
   _term: any;
@@ -424,9 +425,54 @@ export default class Prompt {
   constructor(term: any) {
     this._term = term;
   }
-  _valueStartCol() {
-    return this._startCol + lib.wc.strWidth(this._prompt);
+
+
+  _promptRowsAndCols(valueWidth: number, screenWidth: number): [number, number] {
+    // oneline shortcut
+    if (this._prompt.length == 1 ) {
+      let pos = valueWidth + this._valueStartCol();
+      let r = (pos / screenWidth) | 0;
+      let c = pos % screenWidth;
+      if (c > 0) {
+        r += 1;
+      }
+  
+      return [r, c];
+    }
+
+    let lines = this._prompt;
+    let len = lines.length;
+    // first line with startCol
+    let pos = this._startCol + lib.wc.strWidth(lines[0]);
+    let r = (pos / screenWidth) | 0;
+    if (pos % screenWidth > 0) {
+      r += 1;
+    }
+
+
+    for (var i = 1; i < len - 1; i++) {
+      let cols = lib.wc.strWidth(lines[i]);
+      r += (cols / screenWidth) | 0;
+      if (cols % screenWidth > 0) {
+        r += 1;
+      }
+    }
+
+    pos = valueWidth + lib.wc.strWidth(lines[len - 1]);
+    r += (pos / screenWidth) | 0;
+
+    let c = pos % screenWidth;
+    if (c > 0) {
+      r += 1;
+    }
+
+    return [r, c];
   }
+
+  _valueStartCol() {
+    return this._startCol + lib.wc.strWidth(this._promptLastLine);
+  }
+
   _onKey = (key: KeyType) => {
     let term = this._term;
     switch (key.fullName) {
@@ -571,16 +617,19 @@ export default class Prompt {
       this._getHistory().search();
     }
   }
+
   _completeIfNeeded() {
     if (this._shell && !this._historySearchMode) {
       this._getComplete().complete(1);
     }
   }
+
   _completeBackIfNeeded() {
     if (this._shell && !this._historySearchMode) {
       this._getComplete().complete(-1);
     }
   }
+
   _hintIfNeeded() {
     if (this._shell && !this._historySearchMode) {
       this._getComplete().hint();
@@ -588,6 +637,7 @@ export default class Prompt {
       this._hint = '';
     }
   }
+
   _moveLeft() {
     if (this._cursor < 0) {
       this._cursor = 0;
@@ -604,6 +654,7 @@ export default class Prompt {
     } while (width >= this._cursor && w < 5);
     this._cursor = width;
   }
+
   _moveRight() {
     let valueWidth = lib.wc.strWidth(this._value);
     if (this._cursor >= valueWidth) {
@@ -620,6 +671,7 @@ export default class Prompt {
     } while (width <= this._cursor && w < 5);
     this._cursor = width;
   }
+
   _moveUp() {
     let term = this._term;
     let screen = this._term.screen_;
@@ -638,6 +690,7 @@ export default class Prompt {
     }
     this._render();
   }
+
   _moveDown() {
     let term = this._term;
     let screen = this._term.screen_;
@@ -658,18 +711,21 @@ export default class Prompt {
     }
     this._render();
   }
+
   _getHistory() {
     if (!this._history) {
       this._history = new History(this);
     }
     return this._history;
   }
+
   _getComplete() {
     if (!this._complete) {
       this._complete = new Complete(this);
     }
     return this._complete;
   }
+
   _resetHistory() {
     if (this._historySearchMode) {
       this._getHistory().search();
@@ -680,6 +736,7 @@ export default class Prompt {
       this._history = null;
     }
   }
+
   _forwardWord() {
     // @ts-ignore
     let right = lib.wc.substr(this._value, this._cursor);
@@ -688,6 +745,7 @@ export default class Prompt {
       this._cursor += lib.wc.strWidth(match[0]);
     }
   }
+
   _backWord() {
     let left = lib.wc.substring(this._value, 0, this._cursor);
     let match = __backwardWordRegex.exec(left);
@@ -699,6 +757,7 @@ export default class Prompt {
       this._cursor = 0;
     }
   }
+
   _deleteBackWord() {
     if (this._cursor == 0) {
       this._term.ringBell();
@@ -716,6 +775,7 @@ export default class Prompt {
     this._cursor = Math.max(0, this._cursor - width);
     this._resetHistory();
   }
+
   _deleteForwardWord() {
     let left = lib.wc.substring(this._value, 0, this._cursor);
     // @ts-ignore
@@ -730,6 +790,7 @@ export default class Prompt {
     this._value = [left, right].join('');
     this._resetHistory();
   }
+
   _uppercaseForwardWord() {
     let left = lib.wc.substring(this._value, 0, this._cursor);
     // @ts-ignore
@@ -746,6 +807,7 @@ export default class Prompt {
     this._cursor += width;
     this._resetHistory();
   }
+
   _render() {
     if (this._historySearchMode) {
       this._getHistory().render();
@@ -763,23 +825,34 @@ export default class Prompt {
       valueWidth = 0;
       hintWidth = 0;
     }
-    let pos = valueWidth + this._valueStartCol();
-    let r = (pos / screenWidth) | 0;
-    let c = pos % screenWidth;
-    let moreRows = this._startRow + r + 1 - term.screenSize.height;
+    //let pos = valueWidth + this._valueStartCol();
+    let [r, c] = this._promptRowsAndCols(valueWidth, screenWidth);
+    let moreRows = this._startRow + r - term.screenSize.height;
     if (moreRows > 0) {
       term.appendRows_(moreRows);
       this._startRow -= moreRows;
       term.setCursorPosition(this._startRow, this._startCol);
     }
-    term.print(this._prompt, false);
+
+    for (var i = 0; i < this._prompt.length - 1; i++) {
+      let line = this._prompt[i];
+
+      term.print(line, false);
+      term.setCursorPosition(term.screen_.cursorPosition.row + 1, 0)
+    }
+
+    let lastPromptRow = term.screen_.cursorPosition.row;
+    term.setCursorPosition(lastPromptRow, 0);
+    term.print(this._promptLastLine, false);
+
     var cursor = term.saveCursor();
     if (!this._secure) {
       if (this._hint && this._shell) {
+        // let [r, c] = this._promptRowsAndCols(valueWidth + this._hintPos, screenWidth);
         let pos = this._hintPos + this._valueStartCol();
         let r = (pos / screenWidth) | 0;
         let c = pos % screenWidth;
-        term.setCursorPosition(this._startRow + r, c);
+        term.setCursorPosition(lastPromptRow, c);
         term.screen_.textAttributes.faint = true;
         term.screen_.textAttributes.foregroundSource = 3;
         term.screen_.textAttributes.syncColors();
@@ -789,12 +862,14 @@ export default class Prompt {
       }
       term.print(this._value, false);
     }
-    pos = (this._secure ? 0 : this._cursor) + this._valueStartCol();
-    r = (pos / screenWidth) | 0;
-    c = pos % screenWidth;
-    term.setCursorPosition(this._startRow + r, c);
+    // [r, c] = this._promptRowsAndCols((this._secure ? 0 : this._cursor), screenWidth);
+    let pos = (this._secure ? 0 : this._cursor) + this._valueStartCol()
+    
+    term.setCursorPosition(lastPromptRow, pos % screenWidth);
+    // term.setCursorPosition(lastPromptRow, c);
     term.setCursorVisible(true);
   }
+
   processInput(str: string) {
     if (this._startCol < 0) {
       this._value = '';
@@ -867,14 +942,15 @@ export default class Prompt {
     this.reset();
     this._term.setAutoCarriageReturn(true);
     let opts = JSON.parse(window.atob(b64));
-    this._prompt = opts.prompt;
+    this._prompt = (opts.prompt || '').split(/\n/);
+    this._promptLastLine = this._prompt[this._prompt.length - 1];
     this._secure = opts.secure;
     this._shell = opts.shell;
     this._value = '';
     this._hint = '';
     this._hintPos = 0;
     this._cursor = 0;
-    this._startCol = this._term.getCursorColumn();
+    this._startCol = 0;// this._term.getCursorColumn();
     this._startRow = this._term.getCursorRow();
     this._render();
     this._term.accessibilityReader_.announce(this._prompt);
@@ -885,7 +961,8 @@ export default class Prompt {
     }
     this._history = null;
     this._complete = null;
-    this._prompt = '';
+    this._prompt = [''];
+    this._promptLastLine = '';
     this._startCol = -1;
     this._secure = false;
     this._shell = false;
