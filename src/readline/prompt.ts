@@ -848,7 +848,7 @@ export default class Prompt {
     var cursor = term.saveCursor();
     if (!this._secure) {
       if (this._hint && this._shell) {
-        // let [r, c] = this._promptRowsAndCols(valueWidth + this._hintPos, screenWidth);
+        
         let pos = this._hintPos + this._valueStartCol();
         let r = (pos / screenWidth) | 0;
         let c = pos % screenWidth;
@@ -862,11 +862,10 @@ export default class Prompt {
       }
       term.print(this._value, false);
     }
-    // [r, c] = this._promptRowsAndCols((this._secure ? 0 : this._cursor), screenWidth);
+    
     let pos = (this._secure ? 0 : this._cursor) + this._valueStartCol()
     
     term.setCursorPosition(lastPromptRow, pos % screenWidth);
-    // term.setCursorPosition(lastPromptRow, c);
     term.setCursorVisible(true);
   }
 
