@@ -865,7 +865,7 @@ export default class Prompt {
     
     let pos = (this._secure ? 0 : this._cursor) + this._valueStartCol()
     
-    term.setCursorPosition(lastPromptRow, pos % screenWidth);
+    term.setCursorPosition(lastPromptRow + ((pos / screenWidth) | 0), pos % screenWidth);
     term.setCursorVisible(true);
   }
 
