@@ -846,7 +846,11 @@ hterm.ScrollPort.prototype.measureCharacterSize = function (opt_weight: any) {
       rulerSize.height / numberOfLines
     );
   } else {
+    // style.font returns empty string on iOS 16.4 beta1
     var font = this.screen_.style.font;
+    if (font.length == 0) {
+      font = `${this.screen_.style.fontWeight} ${this.screen_.style.fontSize} ${this.screen_.style.fontFamily}`;
+    }
     var s = __getTextWidth("QWER1YUIOX".repeat(10), font);
 
     size = new hterm.Size(s.width / 100, s.height);
