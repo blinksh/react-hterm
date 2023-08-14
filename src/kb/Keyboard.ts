@@ -809,7 +809,7 @@ export default class Keyboard implements IKeyboard {
     this._lang = parts[0];
     this._isHKB = parts[1] === "hw";
 
-    this._langWithDeletes = this._lang === "ko-KR";
+    this._langWithDeletes = this._lang === "ko-KR" || this._lang === "vi-VN";
     this._stateReset(this.hasSelection);
     if (this._lang !== "dictation") {
       this._moveCaret("");
