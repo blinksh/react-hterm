@@ -1,3 +1,6 @@
+// Tool for log key presses
+// https://jsfiddle.net/yuryk/1vdmk8ws/
+//
 import KeyMap, {
   CSI,
   DEL,
@@ -150,7 +153,8 @@ function _patchKeyDown(
       (kc === 9 && ch === "i") ||
       (kc === 13 && ch === "c") ||
       (kc === 13 && ch === "m") ||
-      (kc === 27 && ch === "[")
+      (kc === 27 && ch === "[") ||
+      (kc === 187 && ch === "]") // (Equal, ], 187) https://github.com/blinksh/blink/issues/1833
     ) {
       keyDown.keyCode = keyMap.keyCode(ch) || keyDown.keyCode;
       return keyDown;
