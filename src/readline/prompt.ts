@@ -842,9 +842,12 @@ export default class Prompt {
     }
 
     let lastPromptRow = term.screen_.cursorPosition.row;
-    term.setCursorPosition(lastPromptRow, 0);
-    term.print(this._promptLastLine, false);
-
+    // If there is a prompt line, we print that. Otherwise we respect the cursor pos.
+    if (this._promptLastLine != "") {
+      term.setCursorPosition(lastPromptRow, 0);
+      term.print(this._promptLastLine, false);
+    }
+    
     var cursor = term.saveCursor();
     if (!this._secure) {
       if (this._hint && this._shell) {
