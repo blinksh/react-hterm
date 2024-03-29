@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "test": "jest",
-    "build": "webpack",
+    "build": "export NODE_OPTIONS=--openssl-legacy-provider && webpack",
     "postbuild": "cp -f src/index.html dist/hterm.html"
   },
   "dependencies": {
