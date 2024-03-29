@@ -243,6 +243,10 @@ export default class Keyboard implements IKeyboard {
 
   readonly caret: HTMLDivElement = document.createElement("div");
 
+  isApplicationCursorMode(): boolean {
+    return this._t.keyboard.applicationCursor;
+  }
+
   constructor(terminal: any, element: HTMLDivElement | null) {
     this._t = terminal;
     this.element = element || document.createElement("div");

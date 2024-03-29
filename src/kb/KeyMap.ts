@@ -2,6 +2,8 @@
 // https://www.w3.org/TR/uievents-code/#key-function-section
 // https://github.com/chromium/hterm/blob/master/doc/ControlSequences.md
 
+import Keyboard from "./Keyboard";
+
 const CANCEL = Symbol('CANCEL');
 const DEFAULT = Symbol('DEFAULT');
 const PASS = Symbol('PASS');
@@ -86,6 +88,7 @@ const _unknownKeyDef: KeyDefType = {
 
 export interface IKeyboard {
   hasSelection: boolean;
+  isApplicationCursorMode(): boolean;
 }
 
 export default class KeyMap {
@@ -164,6 +167,10 @@ export default class KeyMap {
     }
     //const ak = (a: KeyActionType, b: KeyActionType) => a;
     const ac = (a: KeyActionType, b: KeyActionType) => (e: KeyDownType, k: KeyDefType) => {
+      if (!this._keyboard.isApplicationCursorMode()) {
+        return resolve(a, e, k);
+      }
+
       let action = (e.shift || e.ctrl || e.alt || e.meta) ? a : b;
       return resolve(action, e, k);
     }
