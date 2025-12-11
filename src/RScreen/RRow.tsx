@@ -9,6 +9,7 @@ type PropsType = {
 export default class RRow extends Component<PropsType> {
   _v: number = -1;
   _dirty: boolean = true;
+  _flip: boolean = false;
 
   render() {
     this._v = this.props.row.v;
@@ -20,14 +21,20 @@ export default class RRow extends Component<PropsType> {
       const node = nodes[i];
       elements[i] = React.createElement(RNode, { key: node.key, node });
     }
-    var props = null;
+
+    this._flip = !this._flip;
+
+    const props: any = {
+      style: {
+        transform: `scale(${this._flip ? 1.0001 : 1})`
+        //transform: `scale(${1 + (this.props.row.v % 2) * 0.0001})`
+      }
+      //'data-paint-id': this.props.row.v
+    };
+
     if (this.props.row.img) {
       elements.push(this._renderImage(this.props.row.img));
-      props = {
-        style: {
-          overflow: 'visible'
-        }
-      }
+      props.style = { overflow: 'visible' };
     }
     this._dirty = false;
     return React.createElement('x-row', props, elements);
