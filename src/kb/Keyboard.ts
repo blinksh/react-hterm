@@ -261,6 +261,11 @@ export default class Keyboard implements IKeyboard {
 
     this.caret.style.position = "absolute";
     this.caret.style.zIndex = "1000";
+    // Initialize caret off-screen to prevent unwanted cursor visibility
+    this.caret.style.top = "-9999px";
+    this.caret.style.left = "-9999px";
+    this.caret.style.bottom = "auto";
+    this.caret.style.right = "auto";
 
     input.addEventListener("focus", this._onFocus);
     input.addEventListener("blur", this._onBlur);
@@ -741,6 +746,9 @@ export default class Keyboard implements IKeyboard {
     caret.style.right = "auto";
 
     if (length == 0) {
+      // Move caret off-screen when no IME data to prevent cursor visibility
+      caret.style.top = "-9999px";
+      caret.style.left = "-9999px";
       return;
     }
 
