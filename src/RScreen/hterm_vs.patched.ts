@@ -581,7 +581,7 @@ hterm.VT.OSC["52"] = function (parseState) {
     return;
   }
   // @ts-ignore
-  if (data) this.terminal.copyStringToClipboard(this.decode(data));
+  if (data) this.terminal.copyStringToClipboard(this.decodeUTF8(data));
 };
 
 hterm.VT.OSC["1337"] = function (parseState) {
