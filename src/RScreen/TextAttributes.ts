@@ -486,14 +486,43 @@ lib.wc.strWidth = function(str: string): number {
   return rv;
 };
 
+// Import widechar_width library for Unicode 17.0 support
+// @ts-ignore
+import { widechar_wcwidth } from './widechar_width.js';
+
 let __charCache: Map<number, number> = new Map();
 
 const __charWidth = lib.wc.charWidth;
 
+/**
+ * Use widechar_width library (Unicode 17.0) to supplement hterm_all.js (Unicode 13.0).
+ * This provides complete and maintained Unicode character width coverage.
+ */
+
 lib.wc.charWidth = function(ucs: number): number {
   let res = __charCache.get(ucs);
   if (res === undefined) {
-    res = __charWidth(ucs);
+    // Try widechar_width library first (Unicode 17.0)
+    const wcwidth = widechar_wcwidth(ucs);
+
+    if (wcwidth === 2) {
+      // Double-width character
+      res = 2;
+    } else if (wcwidth === -2) {
+      // Combining character (zero-width)
+      res = 0;
+    } else if (wcwidth === 1) {
+      // Single-width character
+      res = 1;
+    } else if (wcwidth < 0) {
+      // Special values: nonprint, ambiguous, private, unassigned, etc.
+      // Fall back to hterm_all.js logic for these
+      res = __charWidth(ucs);
+    } else {
+      // Default case
+      res = wcwidth;
+    }
+
     if (__charCache.size > 20000) {
       __charCache = new Map();
     }
@@ -504,3 +533,137 @@ lib.wc.charWidth = function(ucs: number): number {
   // @ts-ignore
   return res;
 };
+
+// Legacy custom ranges - DEPRECATED, replaced by widechar_width library
+// Kept here for reference only, not used in code
+/*
+const CUSTOM_WIDE_RANGES_DEPRECATED: [number, number][] = [
+  // ============================================================================
+  // SYMBOLS & DINGBATS (0x2600-0x27BF)
+  // ============================================================================
+  [0x2600, 0x2604],  // ☀ ☁ ☂ ☃ ☄ Sun, cloud, umbrella, snowman, comet
+  [0x2607, 0x2612],  // Weather and astrological symbols
+  [0x2616, 0x2647],  // Religious symbols, chess pieces
+  [0x2654, 0x267e],  // Chess, playing cards
+  [0x2680, 0x2692],  // Die faces, symbols
+  [0x2694, 0x26a0],  // Swords and symbols
+  [0x26a2, 0x26a9],  // Symbols
+  [0x26ac, 0x26bc],  // Symbols
+  [0x26bf, 0x26c3],  // Symbols
+  [0x26c6, 0x26cd],  // Symbols
+  [0x26cf, 0x26d3],  // Pick, helmet, chains
+  [0x26d5, 0x26e9],  // No entry, Shinto shrine
+  [0x26eb, 0x26f1],  // Castle, fountain
+  [0x26f4, 0x26f4],  // Ferry
+  [0x26f6, 0x26f9],  // Sailboat, sports
+  [0x26fb, 0x26fc],  // Symbols
+  [0x26fe, 0x2704],  // Symbols
+  [0x2706, 0x2709],  // Symbols
+  [0x270c, 0x2727],  // Victory hand, sparkles
+  [0x2729, 0x274b],  // ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰ Stars and dingbats
+  [0x274d, 0x274d],  // Shadowed white circle
+  [0x274f, 0x2752],  // Symbols
+  [0x2756, 0x2756],  // Symbol
+  [0x2758, 0x2794],  // Symbols and arrows
+  [0x2798, 0x27af],  // Arrows
+  [0x27b1, 0x27be],  // Dingbats
+
+  // ============================================================================
+  // EMOJI RANGES (0x1F000-0x1FFFF)
+  // ============================================================================
+  [0x1F000, 0x1F003],  // Mahjong tiles
+  [0x1F005, 0x1F0CE],  // Mahjong and playing cards
+  [0x1F0D0, 0x1F18D],  // Playing cards
+  [0x1F18F, 0x1F190],  // Squared symbols
+  [0x1F19B, 0x1F1FF],  // Regional indicators
+  [0x1F201, 0x1F20F],  // Squared symbols
+  [0x1F21A, 0x1F21F],  // Squared CJK
+  [0x1F22F, 0x1F23A],  // Squared CJK
+  [0x1F23C, 0x1F23F],  // Squared symbols
+  [0x1F249, 0x1F24F],  // Squared symbols
+  [0x1F252, 0x1F25F],  // Squared symbols
+  [0x1F266, 0x1F2FF],  // Transport signs
+  [0x1F321, 0x1F32C],  // Thermometer, wind face
+  [0x1F336, 0x1F336],  // 🌶 Hot pepper
+  [0x1F37D, 0x1F37D],  // Fork and knife with plate
+  [0x1F394, 0x1F39F],  // Heart decoration, admission tickets
+  [0x1F3CB, 0x1F3CE],  // Weight lifter, racing car
+  [0x1F3D4, 0x1F3DF],  // Snow capped mountain, stadium
+  [0x1F3F1, 0x1F3F3],  // White pennant, waving white flag
+  [0x1F3F5, 0x1F3F7],  // Rosette, construction sign
+  [0x1F3F9, 0x1F43F],  // Bow and arrow, chipmunk
+  [0x1F441, 0x1F441],  // 👁 Eye
+  [0x1F4FD, 0x1F4FE],  // Film projector, portable stereo
+  [0x1F53E, 0x1F54A],  // Six-pointed star
+  [0x1F54F, 0x1F54F],  // Prayer beads
+  [0x1F568, 0x1F579],  // Speaker, joystick
+  [0x1F57B, 0x1F594],  // Left hand telephone, victory hand
+  [0x1F597, 0x1F5A3],  // Symbols
+  [0x1F5A5, 0x1F5FA],  // Desktop computer, world map
+  [0x1F650, 0x1F67F],  // Symbols
+  [0x1F6C6, 0x1F6CB],  // Triangle with rounded corners
+  [0x1F6CD, 0x1F6CF],  // Shopping bags
+  [0x1F6D3, 0x1F6D4],  // Stupa
+  [0x1F6D8, 0x1F6EA],  // Tools
+  [0x1F6ED, 0x1F6F3],  // Satellite
+  [0x1F6FD, 0x1F7DF],  // Toilet, geometric shapes
+  [0x1F7EC, 0x1F7FF],  // Shapes
+  [0x1F80C, 0x1F80F],  // Arrows
+  [0x1F848, 0x1F84F],  // Signstick
+  [0x1F85A, 0x1F85F],  // Clothing
+  [0x1F888, 0x1F88F],  // Regional
+  [0x1F8AE, 0x1F8FF],  // Regional
+  [0x1F90D, 0x1F90F],  // White heart
+  [0x1F910, 0x1F918],  // Zipper mouth face, sign of horns
+  [0x1F919, 0x1F93B],  // Call me hand, modern pentathlon
+  [0x1F93C, 0x1F93C],  // Wrestlers
+  [0x1F946, 0x1F946],  // Rifle
+  [0x1F979, 0x1F979],  // Face with symbols on mouth
+  [0x1F9CC, 0x1F9CC],  // Troll
+  [0x1FA00, 0x1FA6F],  // Chess symbols
+  [0x1FA7B, 0x1FA7F],  // Symbols
+  [0x1FA8A, 0x1FA8E],  // Symbols
+  [0x1FA90, 0x1FA90],  // Symbols
+
+  // ============================================================================
+  // UNICODE 14.0 (September 2021)
+  // ============================================================================
+  [0x1FAC3, 0x1FAC5],  // 🫃 🫄 🫅 Pregnant man, pregnant person, person with crown
+  [0x1FAD7, 0x1FAD9],  // 🫗 🫘 🫙 Pouring liquid, beans, jar
+  [0x1FAE0, 0x1FAE7],  // 🫠 🫡 🫢 🫣 🫤 🫥 🫦 🫧 Face emoji
+  [0x1FAF0, 0x1FAF8],  // 🫰 🫱 🫲 🫳 🫴 🫵 🫶 🫷 🫸 Hand gestures
+
+  // ============================================================================
+  // UNICODE 15.0 (September 2022)
+  // ============================================================================
+  [0x1FA75, 0x1FA77],  // 🩵 🩶 🩷 Colored hearts
+  [0x1FA87, 0x1FA88],  // 🪇 🪈 Maracas, flute
+  [0x1FAA9, 0x1FAAD],  // 🪩 🪪 🪫 🪬 🪭 Mirror ball, ID card, battery, hamsa, fan
+  [0x1FAAE, 0x1FAAF],  // 🪮 🪯 Hair pick, khanda
+  [0x1FAB7, 0x1FABA],  // 🪷 🪸 🪹 🪺 Lotus, coral, nests
+  [0x1FABB, 0x1FABD],  // 🪻 🪼 🪽 Hyacinth, jellyfish, wing
+  [0x1FABF, 0x1FABF],  // 🪿 Goose
+
+  // ============================================================================
+  // UNICODE 16.0 (September 2024)
+  // ============================================================================
+  [0x1FA89, 0x1FA89],  // 🪉 Harp
+  [0x1FA8F, 0x1FA8F],  // 🪏 Shovel
+  [0x1FABE, 0x1FABE],  // 🪾 Leafless tree
+  [0x1FAC6, 0x1FAC6],  // 🫆 Fingerprint
+  [0x1FADC, 0x1FADC],  // 🫜 Root vegetable
+  [0x1FADF, 0x1FADF],  // 🫟 Splatter
+  [0x1FAE8, 0x1FAE9],  // 🫨 🫩 Shaking face, face with bags under eyes
+
+  // ============================================================================
+  // UNICODE 17.0 (September 2025)
+  // ============================================================================
+  [0x1F9CE, 0x1F9CE],  // 🧎 Hairy creature
+  [0x1FA88, 0x1FA88],  // 🪈 Trombone
+  [0x1F40B, 0x1F40B],  // 🐋 Orca
+  [0x1FA99, 0x1FA99],  // 🪙 Treasure chest
+  [0x1FAE4, 0x1FAE4],  // 🫤 Distorted face
+  [0x1F4A5, 0x1F4A5],  // 💥 Fight cloud
+  [0x1FAB8, 0x1FAB8],  // 🪸 Landslide
+];
+*/
