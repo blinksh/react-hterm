@@ -710,6 +710,7 @@ export default class Keyboard implements IKeyboard {
     } else {
       this.element.blur();
       this._t?.onFocusChange__(false);
+      this._stateReset();
     }
   }
 
@@ -826,7 +827,7 @@ export default class Keyboard implements IKeyboard {
     this._isHKB = parts[1] === "hw";
 
     this._langWithDeletes = this._lang === "ko-KR" || this._lang === "vi-VN";
-    this._stateReset(this.hasSelection);
+    this._stateReset();
     if (this._lang !== "dictation") {
       this._moveCaret("");
     }
@@ -840,7 +841,7 @@ export default class Keyboard implements IKeyboard {
     }
   };
 
-  _stateReset = (hasSelection: boolean) => {
+  _stateReset = () => {
     this._down.clear();
     this._up.clear();
     this._mods = {
@@ -850,7 +851,6 @@ export default class Keyboard implements IKeyboard {
       Control: new Set(),
     };
     this.caret.innerHTML = "&#8288;";
-    this.hasSelection = hasSelection;
   };
 
   _handleGuard(up: boolean, char: string) {
@@ -1074,7 +1074,10 @@ export default class Keyboard implements IKeyboard {
         this._execPress(arg, null, true);
         break;
       case "state-reset":
-        this._stateReset(arg);
+        this._stateReset();
+        if (arg !== null) {
+          this.hasSelection = arg;
+        }
         break;
       case "focus":
         this.focus(arg);
