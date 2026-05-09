@@ -15629,7 +15629,7 @@ hterm.VT.CSI[">m"] = hterm.VT.ignore;
  */
 hterm.VT.CSI["n"] = function (parseState) {
   if (parseState.args[0] == 5) {
-    this.terminal.io.sendString("\x1b0n");
+    this.terminal.io.sendString("\x1b[0n");
   } else if (parseState.args[0] == 6) {
     var row = this.terminal.getCursorRow() + 1;
     var col = this.terminal.getCursorColumn() + 1;
