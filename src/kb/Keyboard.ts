@@ -787,10 +787,12 @@ export default class Keyboard implements IKeyboard {
     let data = e.data || "";
     op("ime", { type, data });
 
-    this._moveCaret(data);
-
     if (type == "compositionend") {
       this._output(data);
+      // Move caret off-screen once composition is done.
+      this._moveCaret("");
+    } else {
+      this._moveCaret(data);
     }
   };
 
