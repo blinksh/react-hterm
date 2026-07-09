@@ -11712,9 +11712,17 @@ hterm.Terminal.prototype.getSelectionText = function () {
     // somewhere inside the x-row.  Add any characters from previous siblings
     // into the start offset.
 
-    if (node.nodeName == "#text" && node.parentNode.nodeName == "SPAN") {
-      // If node is the text node in a styled span, move up to the span node.
-      node = node.parentNode;
+    if (node.nodeName == "#text") {
+      // DOM offsets count UTF-16 code units, but the extraction below works
+      // in column widths; convert so wide chars (CJK, emoji) aren't split.
+      startOffset = lib.wc.strWidth(
+        node.textContent.substring(0, selection.startOffset)
+      );
+
+      if (node.parentNode.nodeName == "SPAN") {
+        // If node is the text node in a styled span, move up to the span node.
+        node = node.parentNode;
+      }
     }
 
     while (node.previousSibling) {
@@ -11733,9 +11741,15 @@ hterm.Terminal.prototype.getSelectionText = function () {
     // somewhere inside the x-row.  Add any characters from following siblings
     // into the end offset.
 
-    if (node.nodeName == "#text" && node.parentNode.nodeName == "SPAN") {
-      // If node is the text node in a styled span, move up to the span node.
-      node = node.parentNode;
+    if (node.nodeName == "#text") {
+      endOffset =
+        hterm.TextAttributes.nodeWidth(node) -
+        lib.wc.strWidth(node.textContent.substring(0, selection.endOffset));
+
+      if (node.parentNode.nodeName == "SPAN") {
+        // If node is the text node in a styled span, move up to the span node.
+        node = node.parentNode;
+      }
     }
 
     while (node.nextSibling) {
