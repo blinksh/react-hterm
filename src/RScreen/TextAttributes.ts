@@ -320,6 +320,33 @@ hterm.TextAttributes.prototype.isDefault = function(): boolean {
 
 var _nonASCIIRegex = /[^\x00-\x7F]/;
 
+// A base followed by U+FE0F (VS16) is a single 2-column emoji cluster, trailing
+// zero-width marks included (keycaps are base + VS16 + U+20E3). widechar scores
+// VS16 as zero-width, so every width loop has to detect the pair itself.
+// Returns the UTF-16 length of the cluster at `i`, or 0 if there is no VS16.
+function _vs16ClusterLen(str: string, i: number, baseLen: number): number {
+  if (str.charCodeAt(i + baseLen) !== 0xfe0f) {
+    return 0;
+  }
+  return _absorbZeroWidth(str, i, baseLen + 1);
+}
+
+// Zero-width marks (combining marks, ZWJ, U+FE0E) have to stay in the node of
+// the base they follow. Split into the next node they apply to the wrong base,
+// or to nothing at all.
+function _absorbZeroWidth(str: string, i: number, len: number): number {
+  while (i + len < str.length) {
+    var cp = str.codePointAt(i + len);
+    // @ts-ignore
+    if (lib.wc.charWidth(cp) !== 0) {
+      break;
+    }
+    // @ts-ignore
+    len += cp <= 0xffff ? 1 : 2;
+  }
+  return len;
+}
+
 hterm.TextAttributes.splitWidecharString = function(str: string) {
   var rv = [],
     base = 0,
@@ -341,15 +368,30 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
     ];
   }
 
+  // The seek lands on the VS16 itself when the base is ASCII; step back so the
+  // base is not pre-counted into the leading plain run.
+  if (i > 0 && str.charCodeAt(i) === 0xfe0f) {
+    i -= 1;
+  }
+
   length = wcStrWidth = i;
 
   while (i < len) {
     var increment;
     var c = str.codePointAt(i);
     // @ts-ignore
-    if (c < 128) {
+    var baseLen = c <= 0xffff ? 1 : 2;
+    var vs16Len = _vs16ClusterLen(str, i, baseLen);
+
+    // @ts-ignore
+    if (c < 128 && !vs16Len) {
       var substr = str.substr(i);
       var idx = substr.search(_nonASCIIRegex);
+      // Stop the plain run before an ASCII base that carries a VS16, so the
+      // wide branch below can claim the pair.
+      if (idx > 1 && str.charCodeAt(i + idx) === 0xfe0f) {
+        idx -= 1;
+      }
       if (idx === -1) {
         if (length) {
           rv.push({
@@ -373,11 +415,11 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
         increment = idx;
       }
     } else {
-      // @ts-ignore
-      increment = c <= 0xffff ? 1 : 2;
+      increment = baseLen;
+
       wcCharWidth = lib.wc.charWidth(c);
 
-      if (wcCharWidth <= 1) {
+      if (wcCharWidth <= 1 && !vs16Len) {
         wcStrWidth += wcCharWidth;
         length += increment;
         asciiNode = false;
@@ -392,6 +434,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
           asciiNode = true;
           wcStrWidth = 0;
         }
+        increment = vs16Len ? vs16Len : _absorbZeroWidth(str, i, increment);
         rv.push({
           str: str.substr(i, increment),
           wcNode: true,
@@ -532,6 +575,87 @@ lib.wc.charWidth = function(ucs: number): number {
 
   // @ts-ignore
   return res;
+};
+
+// VS16 clusters count 2 columns, so the terminal's column count matches the
+// emoji-aware width libraries (e.g. string-width) that TUI apps lay out with.
+const __strWidth = lib.wc.strWidth;
+lib.wc.strWidth = function(str: string): number {
+  if (str.indexOf('\uFE0F') === -1) {
+    return __strWidth(str);
+  }
+  let rv = 0;
+  for (let i = 0; i < str.length; ) {
+    const codePoint = str.codePointAt(i);
+    // @ts-ignore
+    const baseLen = codePoint <= 0xffff ? 1 : 2;
+    const clusterLen = _vs16ClusterLen(str, i, baseLen);
+    if (clusterLen) {
+      rv += 2;
+      i += clusterLen;
+      continue;
+    }
+    // @ts-ignore
+    const width = lib.wc.charWidth(codePoint);
+    if (width < 0) {
+      return -1;
+    }
+    rv += width;
+    i += baseLen;
+  }
+  return rv;
+};
+
+// substr slices by column, so it has to step by the same clusters strWidth
+// counts \u2014 otherwise print() hands splitWidecharString more columns than it
+// asked for and the row overruns its allotment.
+const __substr = lib.wc.substr;
+lib.wc.substr = function(
+  str: string,
+  start: number,
+  opt_width?: number,
+): string {
+  if (str.indexOf('\uFE0F') === -1) {
+    return __substr(str, start, opt_width);
+  }
+
+  let startIndex = 0;
+  let width = 0;
+
+  if (start) {
+    while (startIndex < str.length) {
+      const codePoint = str.codePointAt(startIndex);
+      // @ts-ignore
+      const baseLen = codePoint <= 0xffff ? 1 : 2;
+      const clusterLen = _vs16ClusterLen(str, startIndex, baseLen);
+      // @ts-ignore
+      width += clusterLen ? 2 : lib.wc.charWidth(codePoint);
+      if (width > start) {
+        break;
+      }
+      startIndex += clusterLen || baseLen;
+    }
+  }
+
+  if (opt_width === undefined) {
+    return str.substr(startIndex);
+  }
+
+  let endIndex = startIndex;
+  width = 0;
+  while (endIndex < str.length) {
+    const codePoint = str.codePointAt(endIndex);
+    // @ts-ignore
+    const baseLen = codePoint <= 0xffff ? 1 : 2;
+    const clusterLen = _vs16ClusterLen(str, endIndex, baseLen);
+    // @ts-ignore
+    width += clusterLen ? 2 : lib.wc.charWidth(codePoint);
+    if (width > opt_width) {
+      break;
+    }
+    endIndex += clusterLen || baseLen;
+  }
+  return str.substring(startIndex, endIndex);
 };
 
 // Legacy custom ranges - DEPRECATED, replaced by widechar_width library
