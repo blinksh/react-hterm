@@ -877,34 +877,49 @@ hterm.ScrollPort.prototype.syncCharacterSize = function () {
   this.resize();
 };
 
-// Colour emoji advance wider than the two cells reserved for them and stand
-// about as tall as they are wide, so taller than a row. --hterm-emoji-scale
-// fits them to both; it never enlarges.
+// Colour emoji advance wider than the cells reserved for them and stand about
+// as tall as they are wide, so taller than a row. --hterm-emoji-scale fits
+// them to two cells and the row, --hterm-emoji-narrow-scale to one cell and
+// the row; neither enlarges.
 hterm.ScrollPort.prototype.syncEmojiScale_ = function () {
   if (!this.emojiRuler_) {
     this.emojiRuler_ = this.document_.createElement("span");
     this.emojiRuler_.style.cssText =
       "position: absolute;" + "visibility: hidden;" + "white-space: pre;";
-    // Emoji_Presentation=Yes, so it always takes the colour font.
-    this.emojiRuler_.textContent = "\u{1F600}";
   }
 
-  this.rowNodes_.appendChild(this.emojiRuler_);
-  var emojiWidth = this.emojiRuler_.getBoundingClientRect().width;
-  this.rowNodes_.removeChild(this.emojiRuler_);
+  var ruler = this.emojiRuler_;
+  var rowNodes = this.rowNodes_;
+  var cell = this.characterSize.width;
+  var row = this.characterSize.height;
 
-  var scale = 1;
-  if (emojiWidth) {
-    scale = Math.min(
-      1,
-      (this.characterSize.width * 2) / emojiWidth,
-      this.characterSize.height / emojiWidth
-    );
-  }
-  this.document_.documentElement.style.setProperty(
-    "--hterm-emoji-scale",
-    String(Math.floor(scale * 1000) / 1000)
-  );
+  var measure = function (text: string) {
+    ruler.textContent = text;
+    rowNodes.appendChild(ruler);
+    var width = ruler.getBoundingClientRect().width;
+    rowNodes.removeChild(ruler);
+    return width;
+  };
+
+  // Emoji_Presentation=Yes, so it always takes the colour font.
+  var emojiWidth = measure("\u{1F600}");
+
+  var fit = function (cells: number) {
+    if (!emojiWidth) {
+      return "1";
+    }
+    var scale = Math.min(1, (cell * cells) / emojiWidth, row / emojiWidth);
+    return String(Math.floor(scale * 1000) / 1000);
+  };
+
+  var rootStyle = this.document_.documentElement.style;
+  rootStyle.setProperty("--hterm-emoji-scale", fit(2));
+  rootStyle.setProperty("--hterm-emoji-narrow-scale", fit(1));
+
+  // @ts-ignore
+  hterm.TextAttributes.setGlyphMeasurer(function (codePoint: number) {
+    return cell ? measure(String.fromCodePoint(codePoint)) / cell : 0;
+  });
 };
 
 hterm.ScrollPort.prototype.resize = function (force: boolean = false) {

@@ -96,7 +96,9 @@ export default class RNode extends React.Component<PropsType> {
 
     if (!attrs.asciiNode) {
       if (attrs.wcNode) {
-        if (_emojiRegex.test(node.txt)) {
+        if (node.wcw === 1) {
+          classes.push('wc wc-node emoji-narrow');
+        } else if (_emojiRegex.test(node.txt)) {
           classes.push('wc wc-node emoji');
         } else {
           classes.push('wc wc-node');

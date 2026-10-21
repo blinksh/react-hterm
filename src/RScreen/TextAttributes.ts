@@ -333,9 +333,17 @@ function _vs16ClusterLen(str: string, i: number, baseLen: number): number {
 
 // Zero-width marks (combining marks, ZWJ, U+FE0E) have to stay in the node of
 // the base they follow. Split into the next node they apply to the wrong base,
-// or to nothing at all.
-function _absorbZeroWidth(str: string, i: number, len: number): number {
+// or to nothing at all. A mark that starts a wide cluster is left to it.
+function _absorbZeroWidth(
+  str: string,
+  i: number,
+  len: number,
+  clusters?: Map<number, number> | null,
+): number {
   while (i + len < str.length) {
+    if (clusters && clusters.has(i + len)) {
+      break;
+    }
     var cp = str.codePointAt(i + len);
     // @ts-ignore
     if (lib.wc.charWidth(cp) !== 0) {
@@ -417,6 +425,39 @@ function _wideClusters(str: string): Map<number, number> | null {
   return clusters;
 }
 
+var _pictographicRegex = new RegExp('\\p{Extended_Pictographic}', 'u');
+
+var _measureGlyph: ((codePoint: number) => number) | null = null;
+var _overwide: Map<number, boolean> = new Map();
+
+// `measure` returns how many cells a codepoint's glyph advances in the row
+// font. Reset whenever the font or its size changes.
+// @ts-ignore
+hterm.TextAttributes.setGlyphMeasurer = function(
+  measure: (codePoint: number) => number,
+) {
+  _measureGlyph = measure;
+  _overwide = new Map();
+};
+
+// A 1-column pictograph whose only glyph is a colour emoji (no text
+// presentation in any font of the stack) draws about two cells wide. It gets
+// a node of its own so it cannot push or clip the text after it.
+function _isOverwide(codePoint: number): boolean {
+  var rv = _overwide.get(codePoint);
+  if (rv === undefined) {
+    rv =
+      !!_measureGlyph &&
+      _pictographicRegex.test(String.fromCodePoint(codePoint)) &&
+      _measureGlyph(codePoint) > 1.4;
+    if (_overwide.size > 20000) {
+      _overwide = new Map();
+    }
+    _overwide.set(codePoint, rv);
+  }
+  return rv;
+}
+
 hterm.TextAttributes.splitWidecharString = function(str: string) {
   var rv = [],
     base = 0,
@@ -491,7 +532,12 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
 
       wcCharWidth = lib.wc.charWidth(c);
 
-      if (wcCharWidth <= 1 && !clusterLen) {
+      if (
+        wcCharWidth <= 1 &&
+        !clusterLen &&
+        // @ts-ignore
+        !(wcCharWidth === 1 && _isOverwide(c))
+      ) {
         wcStrWidth += wcCharWidth;
         length += increment;
         asciiNode = false;
@@ -506,12 +552,14 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
           asciiNode = true;
           wcStrWidth = 0;
         }
-        increment = clusterLen ? clusterLen : _absorbZeroWidth(str, i, increment);
+        increment = clusterLen
+          ? clusterLen
+          : _absorbZeroWidth(str, i, increment, clusters);
         rv.push({
           str: str.substr(i, increment),
           wcNode: true,
           asciiNode: false,
-          wcStrWidth: 2,
+          wcStrWidth: clusterLen ? 2 : wcCharWidth,
         });
         base = i + increment;
         length = 0;
