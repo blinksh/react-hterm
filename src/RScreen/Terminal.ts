@@ -64,6 +64,10 @@ hterm.Terminal.prototype.decorate = function (div: HTMLElement) {
     "  width: calc(var(--hterm-charsize-width) * 2);" +
     "  line-height: var(--hterm-charsize-height);" +
     "}" +
+    ".wc-node.emoji {" +
+    "  font-size: calc(1em * var(--hterm-emoji-scale, 1));" +
+    "  vertical-align: top;" +
+    "}" +
     ":root {" +
     "  --hterm-charsize-width: " +
     this.scrollPort_.characterSize.width +

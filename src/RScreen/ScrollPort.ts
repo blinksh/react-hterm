@@ -871,6 +871,42 @@ hterm.ScrollPort.prototype.measureCharacterSize = function (opt_weight: any) {
   return size;
 };
 
+hterm.ScrollPort.prototype.syncCharacterSize = function () {
+  this.characterSize = this.measureCharacterSize();
+  this.syncEmojiScale_();
+  this.resize();
+};
+
+// Colour emoji advance wider than the two cells reserved for them and stand
+// about as tall as they are wide, so taller than a row. --hterm-emoji-scale
+// fits them to both; it never enlarges.
+hterm.ScrollPort.prototype.syncEmojiScale_ = function () {
+  if (!this.emojiRuler_) {
+    this.emojiRuler_ = this.document_.createElement("span");
+    this.emojiRuler_.style.cssText =
+      "position: absolute;" + "visibility: hidden;" + "white-space: pre;";
+    // Emoji_Presentation=Yes, so it always takes the colour font.
+    this.emojiRuler_.textContent = "\u{1F600}";
+  }
+
+  this.rowNodes_.appendChild(this.emojiRuler_);
+  var emojiWidth = this.emojiRuler_.getBoundingClientRect().width;
+  this.rowNodes_.removeChild(this.emojiRuler_);
+
+  var scale = 1;
+  if (emojiWidth) {
+    scale = Math.min(
+      1,
+      (this.characterSize.width * 2) / emojiWidth,
+      this.characterSize.height / emojiWidth
+    );
+  }
+  this.document_.documentElement.style.setProperty(
+    "--hterm-emoji-scale",
+    String(Math.floor(scale * 1000) / 1000)
+  );
+};
+
 hterm.ScrollPort.prototype.resize = function (force: boolean = false) {
   this.currentScrollbarWidthPx =
     hterm.getClientWidth(this.screen_) - this.screen_.clientWidth;
