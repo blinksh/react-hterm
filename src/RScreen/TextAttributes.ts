@@ -347,6 +347,76 @@ function _absorbZeroWidth(str: string, i: number, len: number): number {
   return len;
 }
 
+// Codepoints that can join a grapheme into a single emoji: ZWJ, VS16, skin
+// tone modifiers, regional indicators and tag characters.
+var _joinerRegex = /[\u200D\uFE0F\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u;
+
+// @ts-ignore
+var _segmenter = typeof Intl !== 'undefined' && Intl.Segmenter
+  // @ts-ignore
+  ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+  : null;
+
+// A multi-codepoint grapheme carrying a joiner is a single 2-column cell when
+// it also carries a wide codepoint, VS16 or a regional indicator pair. Any
+// other grapheme keeps the widths of its parts, so a cluster's width does not
+// depend on whether the rest of the string has a joiner.
+function _isWideCluster(cluster: string): boolean {
+  if (!_joinerRegex.test(cluster)) {
+    return false;
+  }
+  for (var i = 0; i < cluster.length; ) {
+    var cp = cluster.codePointAt(i) as number;
+    if (
+      cp === 0xfe0f ||
+      (cp >= 0x1f1e6 && cp <= 0x1f1ff) ||
+      lib.wc.charWidth(cp) === 2
+    ) {
+      return true;
+    }
+    i += cp <= 0xffff ? 1 : 2;
+  }
+  return false;
+}
+
+// UTF-16 start index -> length of every 2-column multi-codepoint cluster in
+// `str`, or null when `str` has no joiners and per-codepoint widths apply.
+// strWidth, substr and splitWidecharString all step by these clusters, so
+// they agree on boundaries. Without Intl.Segmenter a cluster is a base with
+// its VS16, or a wide base with its trailing zero-width marks.
+function _wideClusters(str: string): Map<number, number> | null {
+  if (!_joinerRegex.test(str)) {
+    return null;
+  }
+  var clusters = new Map<number, number>();
+  if (!_segmenter) {
+    for (var i = 0; i < str.length; ) {
+      var cp = str.codePointAt(i) as number;
+      var baseLen = cp <= 0xffff ? 1 : 2;
+      var len =
+        _vs16ClusterLen(str, i, baseLen) ||
+        (lib.wc.charWidth(cp) === 2 ? _absorbZeroWidth(str, i, baseLen) : 0);
+      if (len > baseLen) {
+        clusters.set(i, len);
+        i += len;
+      } else {
+        i += baseLen;
+      }
+    }
+    return clusters;
+  }
+  for (var s of _segmenter.segment(str)) {
+    var first = s.segment.codePointAt(0) as number;
+    if (
+      s.segment.length > (first <= 0xffff ? 1 : 2) &&
+      _isWideCluster(s.segment)
+    ) {
+      clusters.set(s.index, s.segment.length);
+    }
+  }
+  return clusters;
+}
+
 hterm.TextAttributes.splitWidecharString = function(str: string) {
   var rv = [],
     base = 0,
@@ -368,9 +438,11 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
     ];
   }
 
-  // The seek lands on the VS16 itself when the base is ASCII; step back so the
-  // base is not pre-counted into the leading plain run.
-  if (i > 0 && str.charCodeAt(i) === 0xfe0f) {
+  var clusters = _wideClusters(str);
+
+  // The seek lands inside a cluster whose base is ASCII (keycaps); step back
+  // so the base is not pre-counted into the leading plain run.
+  if (i > 0 && clusters && clusters.has(i - 1)) {
     i -= 1;
   }
 
@@ -381,15 +453,15 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
     var c = str.codePointAt(i);
     // @ts-ignore
     var baseLen = c <= 0xffff ? 1 : 2;
-    var vs16Len = _vs16ClusterLen(str, i, baseLen);
+    var clusterLen = (clusters && clusters.get(i)) || 0;
 
     // @ts-ignore
-    if (c < 128 && !vs16Len) {
+    if (c < 128 && !clusterLen) {
       var substr = str.substr(i);
       var idx = substr.search(_nonASCIIRegex);
-      // Stop the plain run before an ASCII base that carries a VS16, so the
-      // wide branch below can claim the pair.
-      if (idx > 1 && str.charCodeAt(i + idx) === 0xfe0f) {
+      // Stop the plain run before an ASCII base that starts a cluster, so the
+      // wide branch below can claim it.
+      if (idx > 1 && clusters && clusters.has(i + idx - 1)) {
         idx -= 1;
       }
       if (idx === -1) {
@@ -419,7 +491,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
 
       wcCharWidth = lib.wc.charWidth(c);
 
-      if (wcCharWidth <= 1 && !vs16Len) {
+      if (wcCharWidth <= 1 && !clusterLen) {
         wcStrWidth += wcCharWidth;
         length += increment;
         asciiNode = false;
@@ -434,7 +506,7 @@ hterm.TextAttributes.splitWidecharString = function(str: string) {
           asciiNode = true;
           wcStrWidth = 0;
         }
-        increment = vs16Len ? vs16Len : _absorbZeroWidth(str, i, increment);
+        increment = clusterLen ? clusterLen : _absorbZeroWidth(str, i, increment);
         rv.push({
           str: str.substr(i, increment),
           wcNode: true,
@@ -577,11 +649,12 @@ lib.wc.charWidth = function(ucs: number): number {
   return res;
 };
 
-// VS16 clusters count 2 columns, so the terminal's column count matches the
+// Wide clusters count 2 columns, so the terminal's column count matches the
 // emoji-aware width libraries (e.g. string-width) that TUI apps lay out with.
 const __strWidth = lib.wc.strWidth;
 lib.wc.strWidth = function(str: string): number {
-  if (str.indexOf('\uFE0F') === -1) {
+  const clusters = _wideClusters(str);
+  if (!clusters) {
     return __strWidth(str);
   }
   let rv = 0;
@@ -589,7 +662,7 @@ lib.wc.strWidth = function(str: string): number {
     const codePoint = str.codePointAt(i);
     // @ts-ignore
     const baseLen = codePoint <= 0xffff ? 1 : 2;
-    const clusterLen = _vs16ClusterLen(str, i, baseLen);
+    const clusterLen = clusters.get(i);
     if (clusterLen) {
       rv += 2;
       i += clusterLen;
@@ -615,7 +688,8 @@ lib.wc.substr = function(
   start: number,
   opt_width?: number,
 ): string {
-  if (str.indexOf('\uFE0F') === -1) {
+  const clusters = _wideClusters(str);
+  if (!clusters) {
     return __substr(str, start, opt_width);
   }
 
@@ -627,7 +701,7 @@ lib.wc.substr = function(
       const codePoint = str.codePointAt(startIndex);
       // @ts-ignore
       const baseLen = codePoint <= 0xffff ? 1 : 2;
-      const clusterLen = _vs16ClusterLen(str, startIndex, baseLen);
+      const clusterLen = clusters.get(startIndex);
       // @ts-ignore
       width += clusterLen ? 2 : lib.wc.charWidth(codePoint);
       if (width > start) {
@@ -647,7 +721,7 @@ lib.wc.substr = function(
     const codePoint = str.codePointAt(endIndex);
     // @ts-ignore
     const baseLen = codePoint <= 0xffff ? 1 : 2;
-    const clusterLen = _vs16ClusterLen(str, endIndex, baseLen);
+    const clusterLen = clusters.get(endIndex);
     // @ts-ignore
     width += clusterLen ? 2 : lib.wc.charWidth(codePoint);
     if (width > opt_width) {
