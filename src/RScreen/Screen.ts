@@ -50,6 +50,52 @@ function __insertNode(
   return nodes;
 }
 
+function __blankNode(node: RNodeType): RNodeType {
+  var ws = lib.f.getWhitespace(node.wcw);
+  var a = node.attrs;
+  if (
+    a.fci < 0 &&
+    a.bci < 0 &&
+    a.uci < 0 &&
+    !a.fcs &&
+    !a.bcs &&
+    !a.ucs &&
+    !a.bold &&
+    !a.italic &&
+    !a.blink &&
+    !a.underline &&
+    !a.strikethrough
+  ) {
+    return createDefaultNode(ws, node.wcw);
+  }
+  return createAttributedNode(
+    { ...a, wcNode: false, asciiNode: true },
+    ws,
+    node.wcw
+  );
+}
+
+// A write, insert or delete boundary at `column` that falls inside a wide node
+// would leave half a glyph behind. As in xterm, the whole cell turns blank.
+// The blank has the wide node's width and index, so the cursor's node index
+// and offset stay valid.
+hterm.Screen.prototype.blankWideNodeAt_ = function (column: number) {
+  var row = this.rowsArray[this.cursorRowIdx_];
+  var nodeIdx = this.cursorNodeIdx_;
+  var start = this.cursorPosition.column - this.cursorOffset_;
+  var node = row.nodes[nodeIdx];
+
+  while (node && start + node.wcw <= column) {
+    start += node.wcw;
+    node = row.nodes[++nodeIdx];
+  }
+
+  if (node && node.attrs.wcNode && start < column) {
+    row.nodes[nodeIdx] = __blankNode(node);
+    touch(row);
+  }
+};
+
 hterm.Screen.prototype.invalidateCursorPosition = function () {
   this.cursorPosition.move(0, 0);
   this.cursorRowIdx_ = 0;
@@ -483,6 +529,8 @@ hterm.Screen.prototype.overwriteNode = function (
 };
 
 hterm.Screen.prototype.insertString = function (str: string, wcwidth: number) {
+  this.blankWideNodeAt_(this.cursorPosition.column);
+
   var cursorRow = this.rowsArray[this.cursorRowIdx_];
   var cursorNode = cursorRow.nodes[this.cursorNodeIdx_];
 
@@ -631,6 +679,9 @@ hterm.Screen.prototype.overwriteString = function (
   var maxLength = this.columnCount_ - this.cursorPosition.column;
   if (!maxLength) return [str];
 
+  this.blankWideNodeAt_(this.cursorPosition.column);
+  this.blankWideNodeAt_(this.cursorPosition.column + wcwidth);
+
   var cursorRowNode = this.rowsArray[this.cursorRowIdx_];
   var cursorNode = cursorRowNode.nodes[this.cursorNodeIdx_];
 
@@ -672,6 +723,9 @@ hterm.Screen.prototype.overwriteString = function (
 };
 
 hterm.Screen.prototype.deleteChars = function (count: number): number {
+  this.blankWideNodeAt_(this.cursorPosition.column);
+  this.blankWideNodeAt_(this.cursorPosition.column + count);
+
   var cursorRowNode = this.rowsArray[this.cursorRowIdx_];
   var spliceIdx = this.cursorNodeIdx_;
   var spliceDeleteCount = 0;
